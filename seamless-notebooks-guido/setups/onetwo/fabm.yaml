@@ -1,0 +1,29 @@
+check_conservation: false
+require_initialization: true
+instances:
+  P1:
+    long_name: prey1
+    model: onetwo/prey1
+    parameters:
+      b1: 1.0
+      b2: 1.0 
+    initialization:
+      DW1: 0.3
+      DW2: 0.3
+    coupling:
+  Z1:
+    long_name:  predator
+    model: onetwo/predator
+    parameters:
+      b3: 1.0
+      d:  0.5
+      e:  6.0
+      u:  1.0
+      B:  1.2
+      A:  0.7
+    initialization:
+      DW:  0.1
+    coupling:
+      DW1: P1/DW1
+      DW2: P1/DW2
+        
