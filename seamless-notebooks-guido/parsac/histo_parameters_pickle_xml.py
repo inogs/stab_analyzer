@@ -44,21 +44,11 @@ key = 'O5'
 keyOc= 'O3_c'
 keyO2o= 'O2_o'
 keyOh= 'O3h_h'
-keyO4n= 'O4_n'
 keyR3c = 'R3_c'
-keyR1p = 'R1_p'
-keyR1c = 'R1_c'
-keyZ4c = 'Z4_c'
-keyZ3n = 'Z3_n'
-keyZ3c = 'Z3_c'
-keyZ6n = 'Z6_n'
-keyZ6c = 'Z6_c'
-keyZ5p = 'Z5_p'
 false_index = []
 for i,name in enumerate(target):
-    if name.find(key) !=-1 or name.find(keyOc) !=-1 or name.find(keyOh) !=-1 or name.find(keyR3c) !=-1 or name.find(keyO2o):# !=-1 or name.find(keyO4n) !=-1 or name.find(keyR1p) !=-1 or name.find(keyR1c) !=-1 or name.find(keyZ4c) !=-1 or name.find(keyZ3n) !=-1  or name.find(keyZ5p) !=-1 or name.find(keyZ6n) !=-1 or name.find(keyZ6c) !=-1 or name.find(keyZ3c) !=-1 or name.find(keyOh) !=-1 or name.find(keyR3c) !=-1 :
+    if name.find(key) !=-1 or name.find(keyOc) !=-1 or name.find(keyOh) !=-1 or name.find(keyR3c) !=-1 or name.find(keyO2o):
         false_index.append(i)
-#target.pop()
 
 infile = open(args.pickle,'rb')
 new_dict = pickle.load(infile)
@@ -185,8 +175,6 @@ ax2[5,4].plot(bins, hist/hist_norm,c='black')
 for iax,ax in enumerate(fig.get_axes()):
     ax.label_outer()
     ax.axhline(y=0.05, color='r', linestyle="dotted")
-    #ax.tick_params(axis='both', which='major', labelsize=5)
-    #ax.tick_params(axis='both', which='minor', labelsize=5)
     ax.set_ylim(0, 1)
     ax.set_xticks([])
     ax.set_yticks([])
@@ -196,8 +184,6 @@ for iax,ax in enumerate(fig1.get_axes()):
     iax1 = iax + len(fig.get_axes())
     ax.label_outer()
     ax.axhline(y=0.5, color='r', linestyle='dotted')
-    #ax.tick_params(axis='both', which='major', labelsize=5)
-    #ax.tick_params(axis='both', which='minor', labelsize=5)
     ax.set_ylim(0, 1)
     ax.set_xticks([])
     ax.set_yticks([])
@@ -205,8 +191,6 @@ for iax,ax in enumerate(fig1.get_axes()):
 for iax,ax in enumerate(fig2.get_axes()):
     iax1 = iax + len(fig.get_axes()) + len(fig1.get_axes())
     ax.label_outer()
-    #ax.tick_params(axis='both', which='major', labelsize=5)
-    #ax.tick_params(axis='both', which='minor', labelsize=5)
     ax.set_ylim(0,1 )
     ax.set_xticks([])
     ax.set_yticks([])
@@ -220,7 +204,6 @@ for iax,ax in enumerate(fig2.get_axes()):
 
 fig3, axs3 = plt.subplots()
 axs3.plot(bins, hist/hist_norm,c='black')
-#axs3.set_ylim(0, 0.5)
 axs3.axhline(y=0.5, color='r', linestyle="dotted")
 string_name = parameters[ind_n[0]]+' + '+parameters[ind_n[1]]
 axs3.set_title('N3n + N4n')

@@ -35,13 +35,7 @@ for iax,ax in enumerate(axs):
     ax.annotate(string, xy=(0.6,0.9), xycoords='axes fraction', xytext=(1,-1), textcoords='offset points', horizontalalignment='right', verticalalignment='top')
 fig.text(0.5, 0.04, 'Coefficient of Variation of Concentration ', ha='center', fontsize=8)
 fig.text(0.04, 0.5, 'Normalized counts', va='center', rotation='vertical',fontsize=8)
-#labels = [l.get_label() for l in ax]
 print(np.sum(hist/len(var)))
-#legend = [] 
-#legend.append(ax.get_legend_handles_labels())
-#legend.append(ax1.get_legend_handles_labels())
 
-#fig.legend(lns, labels,ncol=2, loc='upper center')
-#fig.tight_layout()
 fig.savefig('FINAL_mean_var_cycles.png', format='png',dpi=150)
 

@@ -30,17 +30,11 @@ for iax,ax in enumerate(axs):
     ax1.tick_params(axis='both', which='major', labelsize=5)
     ax1.tick_params(axis='y', colors='red')
     lns = lns1+lns2
-    #labs = [l.get_label() for l in lns]
-    #ax.legend(lns, labs, loc=0)
 fig.text(0.5, 0.04, 'time [days]', ha='center')
 fig.text(0.04, 0.5, 'Standard Deviation of the Concentration [$mg C/m^3$]', va='center', rotation='vertical')
 labels = [l.get_label() for l in lns]
-#legend = [] 
-#legend.append(ax.get_legend_handles_labels())
-#legend.append(ax1.get_legend_handles_labels())
 
 fig.legend(lns, labels,ncol=2, loc='upper center')
-#fig.tight_layout()
 fig.savefig('FINAL_var_cycles.png', format='png',dpi=150)
 
 shannon_cycles = new_dict.get('SC')/np.log(9)

@@ -52,7 +52,7 @@ for i in range(len(items)):
     string = items[i].attributes['name'].value
     target.append(string)
 
-#remove 05 03c 03h R3c
+#remove 05 03c 03h R3c O2o
 key = 'O5'
 keyOc= 'O3_c'
 keyOh= 'O3h_h'
@@ -105,112 +105,6 @@ for i in range(len(inputs)):
 #lenght of trajectories
 lenght = 10000
 
-## cycling trajectories
-#output_cycles = np.zeros((len(varnames),lenght))
-#filenames_cycle = [filenames[i] for i in cyclesind]
-#print(len(filenames_cycle))
-#for inc,ncname in enumerate(filenames_cycle) :
-#    i= inc % nranks
-#    if i == rank :
-#        f = nc.Dataset(ncname)
-#        for it,tname in enumerate(varnames):    #keep same order of xml file
-#            for ik,key in enumerate(f.variables.keys()):
-#                if tname == key :
-#                    break
-#            for iv,var in enumerate(f.variables.values()):
-#                 if iv == ik :
-#                     output_cycles[it,:] += var[:,0,0,0]
-#if rank == 0:
-#    val = np.zeros((len(varnames),lenght))
-#    output_cycles_global = np.copy(output_cycles)
-#    for inc in range(nranks) :
-#        i= inc % nranks
-#        print(i, flush=True)
-#        if i != 0:
-##           comm.Recv( [idx_inc, MPI.INT], source=i, tag=1 )
-#            #comm.Recv( [idx_it, MPI.INT], source=i, tag=2 )
-#            comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=3 )
-#            output_cycles_global[:,:]+=val[:,:]
-#            #print("inc: "+str(inc),flush=True)
-#            #print(val[:],flush=True)
-#else :
-##       comm.Send( [inc, MPI.INT], dest=0, tag=1 )
-#        comm.Send( [output_cycles[:,:], MPI.DOUBLE], dest=0, tag=3 )
-##       print(output_cycles[inc,:],flush=True)
-#print('End of the loop',flush=True)
-#
-#
-## non-cycling trajectories
-#output_lin = np.zeros((len(varnames),lenght))
-#filenames_lin = [filenames[i] for i in linind]
-#count = 0
-#for inc,ncname in enumerate(filenames_lin) :
-#    i= inc % nranks
-#    if i == rank :
-#        f = nc.Dataset(ncname)
-#        for it,tname in enumerate(varnames):    #keep same order of xml file
-#            for ik,key in enumerate(f.variables.keys()):
-#                if tname == key :
-#                    break
-#            for iv,var in enumerate(f.variables.values()):
-#                 if iv == ik :
-#                     if np.isnan(np.sum(var[:,0,0,0])):
-#                         count += 1
-#                     else :
-#                         output_lin[it,:] += var[:,0,0,0] 
-#if rank == 0:
-#    val = np.zeros((len(varnames),lenght))
-#    output_lin_global = np.copy(output_lin)
-#    for inc in range(nranks) :
-#        i= inc % nranks
-#        print(i, flush=True)
-#        if i != 0:
-##           comm.Recv( [idx_inc, MPI.INT], source=i, tag=1 )
-#            #comm.Recv( [idx_it, MPI.INT], source=i, tag=2 )
-#            comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=3 )
-#            output_lin_global[:,:]+=val[:,:]
-#            #print("inc: "+str(inc),flush=True)
-#            #print(val[:],flush=True)
-#else :
-##       comm.Send( [inc, MPI.INT], dest=0, tag=1 )
-#        comm.Send( [output_lin[:,:], MPI.DOUBLE], dest=0, tag=3 )
-##       print(output_lin[inc,:],flush=True)
-#print('End of the loop',flush=True)
-#
-##compute means
-#if rank == 0 :
-#    norm = 1.0 / len(filenames_cycle)
-#    mean_cycles = output_cycles_global * norm
-#    print(count,len(filenames_lin))
-#    norm1 = 1.0 / (len(filenames_lin)-count)
-#    mean_lin = output_lin_global * norm1
-#print('inving means between ranks', flush=True)
-#if rank == 0:
-#    val1=np.copy(mean_cycles)
-#    val2=np.copy(mean_lin)
-#    comm.Send( [val1, MPI.DOUBLE], dest=0, tag=2 )
-#    comm.Send( [val2, MPI.DOUBLE], dest=0, tag=1 )
-#    for inc in range(nranks) :
-#        i= inc % nranks
-#        print(i, flush=True)
-#        if i != 0:
-#            comm.Send( [val1, MPI.DOUBLE], dest=i, tag=1 )
-#            comm.Send( [val2, MPI.DOUBLE], dest=i, tag=2 )
-#else :
-#        mean_cycles = np.zeros(lenght)
-#        mean_lin = np.zeros(lenght)
-#        val1=np.zeros(lenght)
-#        val2=np.zeros(lenght)
-#        comm.Recv( [val1[:], MPI.DOUBLE], source=0, tag=1 )
-#        comm.Recv( [val2[:], MPI.DOUBLE], source=0, tag=2 )
-#        for inc in range(nranks) :
-#            i= inc % nranks
-#            print(i, flush=True)
-#            if i != 0:
-#                mean_cycles = val1[:]
-#                mean_lin = val2[:]
-#
-#print('start cycles', flush=True)
 
 pkname = 'means.pickle'
 infile = open(pkname,'rb')
@@ -239,16 +133,10 @@ if rank == 0:
         i= inc % nranks
         print(i, flush=True)
         if i != 0:
-#           comm.Recv( [idx_inc, MPI.INT], source=i, tag=1 )
-            #comm.Recv( [idx_it, MPI.INT], source=i, tag=2 )
             comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=3 )
             output_cycles_global[:,:]+=val[:,:]
-            #print("inc: "+str(inc),flush=True)
-            #print(val[:],flush=True)
 else :
-#       comm.Send( [inc, MPI.INT], dest=0, tag=1 )
         comm.Send( [output_cycles[:,:], MPI.DOUBLE], dest=0, tag=3 )
-#       print(output_cycles[inc,:],flush=True)
 print('End of the loop',flush=True)
 
 print('start non-cycles', flush=True)
@@ -278,21 +166,15 @@ if rank == 0:
         i= inc % nranks
         print(i, flush=True)
         if i != 0:
-#           comm.Recv( [idx_inc, MPI.INT], source=i, tag=1 )
-            #comm.Recv( [idx_it, MPI.INT], source=i, tag=2 )
             comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=3 )
             comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=2 )
             output_lin_global[:,:]+=val[:,:]
             count_global += val1[:]
-            #print("inc: "+str(inc),flush=True)
-            #print(val[:],flush=True)
 else :
         val1 = np.zeros(1)
         val1[0] = float(count)
-#       comm.Send( [inc, MPI.INT], dest=0, tag=1 )
         comm.Send( [val1, MPI.DOUBLE], dest=0, tag=2 )
         comm.Send( [output_lin[:,:], MPI.DOUBLE], dest=0, tag=3 )
-#       print(output_lin[inc,:],flush=True)
 print('End of the loop',flush=True)
 print('Writing pickle', flush=True)
 #compute means

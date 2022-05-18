@@ -52,7 +52,7 @@ for i in range(len(items)):
     string = items[i].attributes['name'].value
     target.append(string)
 
-#remove 05 03c 03h R3c
+#remove 05 03c O2o 03h R3c
 key = 'O5'
 keyOc= 'O3_c'
 keyO2o= 'O2_o'

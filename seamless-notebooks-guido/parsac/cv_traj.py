@@ -120,32 +120,12 @@ for inc,ncname in enumerate(filenames_cycle) :
         except:
             pass
         for it,tname in enumerate(varnames):    #keep same order of xml file
-            #idx = f.variables.keys().index(tname)
             var = f.variables[tname][:,:,:,:]
-            #for key,var in zip(f.variables.keys(),f.variables.values()):
-            #    if tname == key:
             if len(var[:,0,0,0])!=lenght:
                 break
             else :
                 output_cycles[it,:] += var[:,0,0,0]
                 var_cycles[inc,it] = variation(var[-int(lenght/5):,0,0,0])
-        #if np.isnan(np.sum(p_cycles/np.sum(p_cycles)*np.log(p_cycles/np.sum(p_cycles)))):
-        #        count_s_c +=1
-                #break
-        #else :
-        #        shannon_cycles += -np.sum(p_cycles/np.sum(p_cycles)*np.log(p_cycles/np.sum(p_cycles)))
-            
-            #for ik,key in enumerate(f.variables.keys()):
-            #    if tname == key :
-            #        break
-            #for iv,var in enumerate(f.variables.values()):
-            #     if iv == ik :
-            #         output_cycles[it,:] += var[:,0,0,0]
-            #         p_cycles[it] = np.mean(var[-int(lenght/10):,0,0,0])
-            #if np.isnan(np.sum(p_cycles/np.sum(p_cycles)*np.log(p_cycles/np.sum(p_cycles)))):
-            #    count_s_c +=1
-            #else :
-            #    shannon_cycles += -np.sum(p_cycles/np.sum(p_cycles)*np.log(p_cycles/np.sum(p_cycles)))
 if rank == 0:
     val = np.zeros((len(varnames),lenght))
     output_cycles_global = np.copy(output_cycles)
@@ -158,10 +138,8 @@ if rank == 0:
         print(i, flush=True)
         if i != 0:
             comm.Recv( [val2[:], MPI.DOUBLE], source=i, tag=1 )
-            #comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=2 )
             comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=3 )
             output_cycles_global[:,:]+=val[:,:]
-            #shannon_cycles_global += val1[:]
             count_c_global += val2[:]
     print("collecting shannon", flush=True)
     for ipc,ncname in enumerate(filenames_cycle):
@@ -169,148 +147,21 @@ if rank == 0:
         if i!=0: 
             comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=2 )
             var_cycles_global[ipc,:] = val1[ipc,:]
-            #print("inc: "+str(inc),flush=True)
-            #print(val[:],flush=True)
 else :
         val1=np.zeros(1)
         val2=np.zeros(1)
-        #val1=shannon_cycles
         val2[0]=float(count_s_c)
-        #comm.Send( [val1, MPI.DOUBLE], dest=0, tag=2 )
         comm.Send( [val2, MPI.DOUBLE], dest=0, tag=1 )
         comm.Send( [output_cycles[:,:], MPI.DOUBLE], dest=0, tag=3 )
         for ipc,ncname in enumerate(filenames_cycle) :
             i= ipc % nranks
             if i== rank :
                 comm.Send( [var_cycles[ipc,:], MPI.DOUBLE], dest=0, tag=2 )
-#       print(output_cycles[inc,:],flush=True)
 print('End of the loop',flush=True)
-##print('starting non cycling')
-## non-cycling trajectories
-#output_lin = np.zeros((len(varnames),lenght))
-#filenames_lin = [filenames[i] for i in linind]
-#count = 0
-#count_s_nc=0
-#p_lin = np.zeros(len(varnames))
-#shannon_lin = np.zeros((len(filenames_lin),1)) 
-#sh=0
-#tot = np.zeros(len(varnames))
-#for inc,ncname in enumerate(filenames_lin) :
-#    i= inc % nranks
-#    if i == rank :
-#        f = nc.Dataset(ncname)
-#        for it,tname in enumerate(varnames):    #keep same order of xml file
-#            #for key,var in zip(f.variables.keys(),f.variables.values()):
-#            #    if tname == key:
-#            var = f.variables[tname][:,:,:,:]
-#            if np.isnan(np.sum(var[:,0,0,0])):
-#                  count += 1
-#                  break
-#            else :
-#                  output_lin[it,:] += var[:,0,0,0]
-#                  p_lin[it] = np.mean(var[-int(lenght/10):,0,0,0])
-#                  if p_lin[it]<0:
-#                      p_lin[it]=0
-#        for ip,pv in enumerate(p_lin):
-#            if pv ==0:
-#                tot[ip]=0
-#            else :
-#                tot[ip]= pv/np.sum(p_lin)*np.log(pv/np.sum(p_lin))
-#        sh = np.sum(tot)
-#        if -sh <= np.log(9):
-#            shannon_lin[inc,0] = -sh
-#        else:
-#            count_s_nc =+1
-#
-#        #if np.isnan(np.sum(p_lin/np.sum(p_lin)*np.log(p_lin/np.sum(p_lin)))):
-#        #        count_s_nc +=1
-#                #break
-#        #else :
-#        #        shannon_lin += -np.sum(p_lin/np.sum(p_lin)*np.log(p_lin/np.sum(p_lin)))
-#            
-#            #for ik,key in enumerate(f.variables.keys()):
-#            #    if tname == key :
-#            #        break
-#            #for iv,var in enumerate(f.variables.values()):
-#            #     if iv == ik :
-#            #         if np.isnan(np.sum(var[:,0,0,0])):
-#            #             count += 1
-#            #         else :
-#            #             output_lin[it,:] += var[:,0,0,0] 
-#            #             p_lin[it] = np.mean(var[-int(lenght/10):,0,0,0])
-#            #if np.isnan(np.sum(p_lin/np.sum(p_lin)*np.log(p_lin/np.sum(p_lin)))):
-#            #    count_s_nc +=1
-#            #else :
-#            #    shannon_lin += -np.sum(p_lin/np.sum(p_lin)*np.log(p_lin/np.sum(p_lin)))
-#if rank == 0:
-#    val = np.zeros((len(varnames),lenght))
-#    output_lin_global = np.copy(output_lin)
-#    val1 = np.zeros(1) 
-#    val2 = np.zeros(1)
-#    val3 = np.zeros(1)
-#    count_global = count
-#    count_snc_global = count_s_nc
-#    shannon_lin_global = shannon_lin
-#    for inc in range(nranks) :
-#        i= inc % nranks
-#        print(i, flush=True)
-#        if i != 0:
-#           # comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=1 )
-#            comm.Recv( [val2[:], MPI.DOUBLE], source=i, tag=2 )
-#            comm.Recv( [val3[:], MPI.DOUBLE], source=i, tag=3 )
-#            comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=4 )
-#            output_lin_global[:,:]+=val[:,:]
-#           # shannon_lin_global += val1[:]
-#            count_global += val2[:]
-#            count_snc_global += val3[:]
-#            #print("inc: "+str(inc),flush=True)
-#            #print(val[:],flush=True)
-#    print('collecting shannon',flush=True)
-#    for inp,ncname in enumerate(filenames_lin):
-#        i= inp % nranks
-#        if i!=0:
-#            comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=1 )
-#            shannon_lin_global[inp,0] = val1[0]
-#
-#else :
-#
-#        val3 = np.zeros(1)
-#        val2 = np.zeros(1)
-#        #val1 = np.zeros(1)
-#        #val1=shannon_lin
-#        val2[0]=float(count)
-#        val3[0]=float(count_s_nc)
-#        #comm.Send( [val1, MPI.DOUBLE], dest=0, tag=1 )
-#        comm.Send( [val2, MPI.DOUBLE], dest=0, tag=2 )
-#        comm.Send( [val3, MPI.DOUBLE], dest=0, tag=3 )
-#        comm.Send( [output_lin[:,:], MPI.DOUBLE], dest=0, tag=4 )
-#        for ipc,ncname in enumerate(filenames_lin):
-#            i = ipc % nranks
-#            if i== rank :
-#                comm.Send( [shannon_lin[ipc,0], MPI.DOUBLE], dest=0, tag=1 )
-##       print(output_lin[inc,:],flush=True)
-#print('End of the loop',flush=True)
-#
-#compute means
 if rank == 0 :
     norm = 1.0 / len(filenames_cycle)
-#    mean_cycles = output_cycles_global * norm
-#    print(count_c_global,len(filenames_cycle))
-    #norm_s_c = 1.0 / (len(filenames_cycle)-count_c_global)
-    #mean_shannon_cycles = shannon_cycles_global * norm#_s_c
     mean_var_cycles = np.mean(var_cycles_global,0)
-#    print(mean_shannon_cycles)#, shannon_cycles_global/len(filenames_cycle))
-#    print(count_global,count_snc_global,len(filenames_lin))
-#    norm1 = 1.0 / (len(filenames_lin)-count_global)
-#    mean_lin = output_lin_global * norm1
-##    norm_s_nc = 1.0 / (len(filenames_cycle)-count_global-count_snc_global)
-#    mean_shannon_lin = np.mean(shannon_lin_global)# * norm1#_s_nc
-#    print(mean_shannon_lin, shannon_lin_global/len(filenames_lin))
     print('collecting indexes',flush= True)
-#    idx = []
-#    for iv,v in enumerate(var_cycles_global[:,0]):
-#        if v > 0.05: #collect trajectories with CV bigger than 0.05
-#                idx.append(iv)
     print('pickling',flush=True)
     pkname = 'var.pickle'
     outfile = open(pkname,'wb')
