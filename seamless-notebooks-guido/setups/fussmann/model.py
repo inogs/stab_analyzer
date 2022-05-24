@@ -49,10 +49,10 @@ def dy(t0, y):
     return model.getRates()
 
 # Time-integrate over 1000 days (note: FABM's internal time unit is seconds!)
-t_eval = np.linspace(0, 3650.*86400, 10000) 
+t_eval = np.linspace(0, 3650., 10000) 
 #t_eval = np.linspace(0, 3650.*86400, 300000) 
 sol = scipy.integrate.solve_ivp(dy, [0., 3650.*86400], model.state, t_eval=t_eval)
-#y = scipy.integrate.odeint(dy, model.state, t*86400)
+#y = scipy.integrate.odeint(dy, model.state, t_eval*86400)
 
 # Plot results
 #import pylab
@@ -60,9 +60,9 @@ sol = scipy.integrate.solve_ivp(dy, [0., 3650.*86400], model.state, t_eval=t_eva
 #pylab.legend([variable.path for variable in model.state_variables])
 #pylab.show()
 
-t = sol.t/86400
+t = sol.t
 y = sol.y.T
-
+#t = t_eval
 
 Nt=t.shape[0]
 deltaT=t[1]-t[0]
