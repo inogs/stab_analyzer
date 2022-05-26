@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../client/config.xsd">
+<model type="program"/>      
+<!-- <executable path="../setups/rosenmcartur/model.py" shell="True"/> -->
+<executable path="/g100_work/OGS21_PRACE_P/seamless-notebooks-guido/setups/fussmann/model.py" shell="True"/>
+  <setup path="/g100_work/OGS21_PRACE_P/seamless-notebooks-guido/setups/fussmann" exclude_files="" exclude_dirs=""/>
+  <parameters>
+  <parameter file="fabm.yaml" variable="instances/C1/parameters/dC1" minimum="0.0" maximum="1.0" />
+  <parameter file="fabm.yaml" variable="instances/C1/parameters/dC2" minimum="0.0" maximum="1.0" />
+  <parameter file="fabm.yaml" variable="instances/X/parameters/dX1"  minimum="0.0" maximum="1.0" />
+  <parameter file="fabm.yaml" variable="instances/Y/parameters/dY1"  minimum="0.0" maximum="1.0" />
+</parameters>
+  <targets>
+  <target name="P1_DW1_var" expression="P1_DW1_var" path="result.nc"/>
+  <target name="P1_DW1_peak" expression="P1_DW1_peak" path="result.nc"/>
+  <target name="P1_DW2_var" expression="P1_DW2_var" path="result.nc"/>
+  <target name="P1_DW2_peak" expression="P1_DW2_peak" path="result.nc"/>
+  <target name="P1_DW3_var" expression="P1_DW3_var" path="result.nc"/>
+  <target name="P1_DW3_peak" expression="P1_DW3_peak" path="result.nc"/>
+  <target name="C1_DWC1_var" expression="C1_DWC1_var" path="result.nc"/>
+  <target name="C1_DWC1_peak" expression="C1_DWC1_peak" path="result.nc"/>
+  <target name="C1_DWC2_var" expression="C1_DWC2_var" path="result.nc"/>
+  <target name="C1_DWC2_peak" expression="C1_DWC2_peak" path="result.nc"/>
+  <target name="X_DWX1_var" expression="X_DWX1_var" path="result.nc"/>
+  <target name="X_DWX1_peak" expression="X_DWX1_peak" path="result.nc"/>
+  <target name="Y_DWY1_var" expression="Y_DWY1_var" path="result.nc"/>
+  <target name="Y_DWY1_peak" expression="Y_DWY1_peak" path="result.nc"/>
+  <target name="Z_DWZ1_var" expression="Z_DWZ1_var" path="result.nc"/>
+  <target name="Z_DWZ1_peak" expression="Z_DWZ1_peak" path="result.nc"/>  
+  </targets>
+  
+</config>

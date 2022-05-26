@@ -6,9 +6,9 @@ instances:
     model: fussmann/P1
     parameters:
     initialization:
-      DW1: 5.9 
-      DW2: 5.9 
-      DW3: 5.9 
+      DW1: 0.5 
+      DW2: 0.5 
+      DW3: 0.5 
     coupling:
   C1:
     long_name: C1 
@@ -27,9 +27,10 @@ instances:
       bP3C1:  5.0
       bP3C2:  5.0
       dC1:  1.0
+      dC2:  1.0
     initialization:
-      DWC1:  5.5
-      DWC2:  5.5
+      DWC1:  0.5
+      DWC2:  0.5
     coupling:
       DWP1: P1/DW1
       DWP2: P1/DW2
@@ -50,7 +51,7 @@ instances:
       bC2X1:  2.0
       dX1:  1.0
     initialization:
-      DWX1:  5.5
+      DWX1:  0.5
     coupling:
       DWP1: P1/DW1        
       DWP2: P1/DW2        
@@ -65,7 +66,7 @@ instances:
       bX1Y1:   0.50
       dY1:  1.0
     initialization:
-      DWY1:  5.5
+      DWY1:  0.5
     coupling:
       DWX1: X/DWX1
   Z:
@@ -76,7 +77,7 @@ instances:
       bY1Z1:   0.25
       dZ1:  1.0
     initialization:
-      DWZ1:  5.5
+      DWZ1:  0.0
     coupling:
       DWY1: Y/DWY1
 

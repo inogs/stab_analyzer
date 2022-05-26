@@ -9,15 +9,15 @@ import math
 import subprocess
 #import statsmodels.api as sm
 from scipy.stats import variation
+import sys
+ensamble_counter=int(np.loadtxt('ensamble_counter.txt'))
 
-#ensamble_counter=int(np.loadtxt('ensamble_counter.txt'))
-
-#command='/g100_scratch/userexternal/gocchipi/BFM_5D/' + str(ensamble_counter).zfill(6) + '/'
+command='/g100_scratch/userexternal/gocchipi/FUSSMAN_5c/' + str(ensamble_counter).zfill(6) + '/'
 
 
 
-#subprocess.run(["mkdir","-p",command])
-#subprocess.run(["cp","fabm.yaml",command])
+subprocess.run(["mkdir","-p",command])
+subprocess.run(["cp","fabm.yaml",command])
 # Create model (loads fabm.yaml)
 model = pyfabm.Model('fabm.yaml')
 
@@ -49,9 +49,9 @@ def dy(t0, y):
     return model.getRates()
 
 # Time-integrate over 1000 days (note: FABM's internal time unit is seconds!)
-t_eval = np.linspace(0, 3650., 10000) 
+t_eval = np.linspace(0, 60000., 60000) 
 #t_eval = np.linspace(0, 3650.*86400, 300000) 
-sol = scipy.integrate.solve_ivp(dy, [0., 3650.*86400], model.state, t_eval=t_eval)
+sol = scipy.integrate.solve_ivp(dy, [0., 60000.], model.state, t_eval=t_eval)
 #y = scipy.integrate.odeint(dy, model.state, t_eval*86400)
 
 # Plot results
@@ -64,9 +64,17 @@ t = sol.t
 y = sol.y.T
 #t = t_eval
 
+#check if a specie gets extinct
+for iv,var in enumerate(y[-1,:]):
+    if var < 0.0001 and iv != len(y[-1,:])-1:
+        string = 'extinction of specie ' + str(iv)
+        sys.exit(string)
+
+
+
 Nt=t.shape[0]
 deltaT=t[1]-t[0]
-laststeps = int(Nt/10) #compute the indicators just for this last timesteps
+laststeps =1000# int(Nt/10) #compute the indicators just for this last timesteps
 freq = (1/deltaT) * np.linspace(0,laststeps/2,int(laststeps/2)) / laststeps
 
 # Save results
@@ -110,19 +118,20 @@ for v,variable in enumerate(model.state_variables):
 # Sensibility targets
 
 #critical lenght for cycles
-epsilon = 0.001
+epsilon = 0.0001
+tvar = np.arange(50000,51000,1000)
 for v,variable in enumerate(model.state_variables):
 
 #coeff of variance
-    if math.isinf(variation(y[-laststeps:,v])) : 
+    if math.isinf(variation(y[tvar,v])) : 
         p1_var=int(1)
-    elif variation(y[-laststeps:,v]) > epsilon :
+    elif variation(y[tvar,v]) > epsilon :
         p1_var = int(1)
     else :
         p1_var = int(0)
 
 #Relative peaks in the fourier spac
-    PF = fft(y[-laststeps:,v])
+    PF = fft(y[tvar,v])
 
     PF2 = np.abs(PF / laststeps) #full spectrum  /Npoints to get the true amplitudes
     PF1 = PF2[:laststeps//2]              #half spectrum
@@ -193,4 +202,4 @@ for v,variable in enumerate(model.state_variables):
 #    P1_fstate.long_name = variable.name.replace("/","_") + "_final_state"
 #    f.variables[ncfstate][:]=fstate
 f.close()
-#subprocess.run(["cp","result.nc",command])
+subprocess.run(["cp","result.nc",command])
