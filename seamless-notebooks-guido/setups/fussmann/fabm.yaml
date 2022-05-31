@@ -5,6 +5,12 @@ instances:
     long_name: P1
     model: fussmann/P1
     parameters:
+      r1:  2.5      
+      r2:  2.5      
+      r3:  2.5      
+      K1:  1.0     
+      K2:  1.0     
+      K3:  1.0     
     initialization:
       DW1: 0.5 
       DW2: 0.5 
