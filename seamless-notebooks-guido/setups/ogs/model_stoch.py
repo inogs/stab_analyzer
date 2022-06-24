@@ -10,12 +10,26 @@ import subprocess
 #import statsmodels.api as sm
 from scipy.stats import variation
 import matplotlib.pyplot as plt
+try:
+    from mpi4py import MPI
+    comm  = MPI.COMM_WORLD
+    rank  = comm.Get_rank()
+    nranks =comm.size
+    isParallel = True
+except:
+    rank   = 0
+    nranks = 1
+    isParallel = False
+
+print("Init ...", flush=True)
+print(isParallel, flush=True)
+
 ensamble_counter=int(np.loadtxt('ensamble_counter.txt'))
 
 command='/g100_scratch/userexternal/gocchipi/BFM_5D/' + str(ensamble_counter).zfill(6) + '/'
 #output of the model for all samples
 #ntrials = 1000
-ntrials = 4
+ntrials = 9000   
 t_eval = np.linspace(0, 1825.*86400, 10000) 
 y = np.zeros((ntrials,len(t_eval),54))
 fig, ax = plt.subplots(3,3)
@@ -27,100 +41,116 @@ subprocess.run(["mkdir","-p",command])
 subprocess.run(["cp","fabm.yaml",command])
 
 for s in range(ntrials):
-  # Create model (loads fabm.yaml)
-  model = pyfabm.Model('fabm.yaml')
-  
-  # Configure the environment
-  # Note: the set of environmental dependencies depends on the loaded biogeochemical model.
-  model.dependencies['cell_thickness'].value = 1.
-  model.dependencies['temperature'].value = 15.
-  model.dependencies['practical_salinity'].value = 30.
-  model.dependencies['density'].value = 1000.
-  model.dependencies['depth'].value = 1.
-  model.dependencies['pressure'].value = 1.
-  model.dependencies['isBen'].value = 1.
-  model.dependencies['longitude'].value = 0.
-  model.dependencies['latitude'].value = 0.
-  model.dependencies['surface_downwelling_shortwave_flux'].value = 50.
-  model.dependencies['surface_air_pressure'].value = 1.
-  model.dependencies['wind_speed'].value = 5.
-  model.dependencies['mole_fraction_of_carbon_dioxide_in_air'].value = 390.
-  model.dependencies['number_of_days_since_start_of_the_year'].value = 1.
-  
-  # Verify the model is ready to be used
-  model.cell_thickness=1.
-  
-  assert model.checkReady(), 'One or more model dependencies have not been fulfilled.'
-  
-  # Time derivative
-  #def dy(t0, y):
-  #    model.state[:] = y
-  #    return model.getRates()
-  
-  #variables with noise
-  varnames = ["B1/c","P1/c","P2/c","P3/c","P4/c","Z5/c","Z6/c","Z3/c","Z4/c"]
-  #noise
-  sigma = 1.  # Standard deviation.
-  mu = 0.  # Mean.
-  mu1 = 5.  # Mean.
-  tau =0.5  # Time constant.
-  tau1 =0.01  # Time constant.
-  sigma_bis = sigma * np.sqrt(2. / tau)
-  
-  # Time-integrate over 1000 days (note: FABM's internal time unit is seconds!)
-  dt = (t_eval[-1]-t_eval[0])/len(t_eval)
-  sqrtdt = np.sqrt(dt)
-  y[0,:]=model.state[:]
+    r= s % nranks
+    if r == rank :
+      # Create model (loads fabm.yaml)
+      model = pyfabm.Model('fabm.yaml')
+      
+      # Configure the environment
+      # Note: the set of environmental dependencies depends on the loaded biogeochemical model.
+      model.dependencies['cell_thickness'].value = 1.
+      model.dependencies['temperature'].value = 15.
+      model.dependencies['practical_salinity'].value = 30.
+      model.dependencies['density'].value = 1000.
+      model.dependencies['depth'].value = 1.
+      model.dependencies['pressure'].value = 1.
+      model.dependencies['isBen'].value = 1.
+      model.dependencies['longitude'].value = 0.
+      model.dependencies['latitude'].value = 0.
+      model.dependencies['surface_downwelling_shortwave_flux'].value = 50.
+      model.dependencies['surface_air_pressure'].value = 1.
+      model.dependencies['wind_speed'].value = 5.
+      model.dependencies['mole_fraction_of_carbon_dioxide_in_air'].value = 390.
+      model.dependencies['number_of_days_since_start_of_the_year'].value = 1.
+      
+      # Verify the model is ready to be used
+      model.cell_thickness=1.
+      
+      assert model.checkReady(), 'One or more model dependencies have not been fulfilled.'
+      
+      # Time derivative
+      #def dy(t0, y):
+      #    model.state[:] = y
+      #    return model.getRates()
+      
+      #variables with noise
+      varnames = ["B1/c","P1/c","P2/c","P3/c","P4/c","Z5/c","Z6/c","Z3/c","Z4/c"]
+      #noise
+      sigma = 0.01  # Standard deviation.
+      mu = 0.  # Mean.
+      tau =0.5  # Time constant.
+      sigma_bis = sigma * np.sqrt(2. / tau)
+      
+      # Time-integrate over 1000 days (note: FABM's internal time unit is seconds!)
+      dt = (t_eval[-1]-t_eval[0])/len(t_eval)
+      sqrtdt = np.sqrt(dt)
+      y[s,0,:]=model.state[:]
+      
+      #print(model.state) 
+      for i in range(len(t_eval)):
+          dy = model.getRates()
+          for j in range(len(model.state)):
+              if i!=0:
+                  if model.state_variables[j].name in varnames:
+                      y[s,i,j]=y[s,i-1,j]+dy[j]*dt + sigma_bis * sqrtdt * np.random.randn() * y[s,i-1,j]/1000.
+                  else:
+                      y[s,i,j]=y[s,i-1,j]+dy[j]*dt
+          model.state[:]=y[s,i,:]
+      #if s!=ntrials-1:
+      #    del model
+if rank == 0:
+    y_global = np.copy(y)
+    val = np.zeros(y.shape)
+    for s in range(ntrials):
+        r = s % nranks
+        if r !=0 :
+          comm.Recv( [val[:], MPI.DOUBLE], source=r, tag=1 )
+          y_global[r,:] = val[r,:]
+else:
+    val = np.zeros(y.shape)
+    for s in range(ntrials):
+        r = s % nranks
+        if r == rank :
+            comm.Send( [y[s,:], MPI.DOUBLE], dest=0, tag=1 )
+print('End of the loop',flush=True)
+
+if rank == 0 :
+  y = np.copy(y_global)  
   # We create bins for the histograms.
-  bins = np.linspace(-2., 14., 100)
+  bins = np.linspace(-2., 50., 200)
   
-  #print(model.state) 
+  # We display the histogram for a few points in
+   # time
   for i in range(len(t_eval)):
-      dy = model.getRates()
-      for j in range(len(model.state)):
-          if i!=0:
+        for j in range(len(model.state)):
+            if i in (5, 5000, 9000):# and s == ntrials-1:
               if model.state_variables[j].name in varnames:
-                  y[s,i,j]=y[s,i-1,j]+dy[j]*dt# + sigma_bis * sqrtdt * np.random.randn() * y[s,i-1,j]
-              else:
-                  y[s,i,j]=y[s,i-1,j]+dy[j]*dt
-      model.state[:]=y[s,i,:]
-  if s!=ntrials-1:
-      del model
-
-
-
-
-# We display the histogram for a few points in
- # time
-for i in range(len(t_eval)):
-      for j in range(len(model.state)):
-          if i in (5, 5000, 9000):# and s == ntrials-1:
-            if model.state_variables[j].name in varnames:
-              hist1, _ = np.histogram(y[:,i,j], bins=bins)
-              ax[k].plot((bins[1:] + bins[:-1]) / 2, hist1,
-                  {5: '-', 5000: '.', 9000: '-.', }[i],
-                  label=f"t={i * dt / 86400:.2f}")
-              l.append(f"t={i * dt / 86400:.2f}")
-              ax[k].set_title(model.state_variables[j].name,fontsize=6)
-              ax[k].legend()
-              k+=1
+                hist1, _ = np.histogram(y[:,i,j], bins=bins)
+                ax[k].plot((bins[1:] + bins[:-1]) / 2, hist1/ntrials,
+                    {5: '-', 5000: '.', 9000: '-.', }[i],
+                    label=f"t={i * dt / 86400:.2f}")
+                l.append(f"t={i * dt / 86400:.2f}")
+                ax[k].set_title(model.state_variables[j].name,fontsize=6)
+            #    ax[k].legend()
+                ax[k].label_outer()
+                k+=1
+        k=0
+  #labels = l[:3]
+  #fig.legend(l, labels,ncol=2, loc='upper center')
+  fig.savefig('stoch_histo.png', format='png',dpi=150)
+  
+  
+  #Relaxation time
+  tau = np.zeros(len(varnames))
+  for i in range(len(t_eval)):
       k=0
-#labels = l[:3]
-#fig.legend(l, labels,ncol=2, loc='upper center')
-plt.show()
-
-
-#Relaxation time
-tau = np.zeros(len(varnames))
-for i in range(len(t_eval)):
-    k=0
-    for j in range(len(model.state)):
-        if model.state_variables[j].name in varnames:
-            tau[k]+=(np.mean(y[:,i,j],axis=0)-np.mean(y[:,-1,j],axis=0)) / (np.mean(y[:,0,j],axis=0)-np.mean(y[:,-1,j],axis=0))    
-            k+=1
-
-
-##t_eval = np.linspace(0, 3650.*86400, 300000) 
+      for j in range(len(model.state)):
+          if model.state_variables[j].name in varnames:
+              tau[k]+=np.abs(np.mean(y[:,i,j],axis=0)-np.mean(y[:,-1,j],axis=0)) / np.abs(np.mean(y[:,0,j],axis=0)-np.mean(y[:,-1,j],axis=0))    
+              k+=1
+  
+  print(tau)
+  ##t_eval = np.linspace(0, 3650.*86400, 300000) 
 ##sol = scipy.integrate.solve_ivp(dy, [0., 3650.*86400], model.state, t_eval=t_eval)
 ##y = scipy.integrate.odeint(dy, model.state, t*86400)
 #t = t_eval/86400
