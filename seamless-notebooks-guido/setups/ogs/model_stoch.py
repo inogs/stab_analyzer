@@ -28,9 +28,9 @@ ensamble_counter=int(np.loadtxt('ensamble_counter.txt'))
 
 command='/g100_scratch/userexternal/gocchipi/BFM_5D/' + str(ensamble_counter).zfill(6) + '/'
 #output of the model for all samples
-#ntrials = 1000
-ntrials = 9000   
-t_eval = np.linspace(0, 1825.*86400, 10000) 
+ntrials = 1000
+#ntrials = 40   
+t_eval = np.linspace(0, 1825.*86400, 100000) 
 y = np.zeros((ntrials,len(t_eval),54))
 fig, ax = plt.subplots(3,3)
 ax = ax.ravel()
@@ -76,10 +76,7 @@ for s in range(ntrials):
       #variables with noise
       varnames = ["B1/c","P1/c","P2/c","P3/c","P4/c","Z5/c","Z6/c","Z3/c","Z4/c"]
       #noise
-      sigma = 0.01  # Standard deviation.
-      mu = 0.  # Mean.
-      tau =0.5  # Time constant.
-      sigma_bis = sigma * np.sqrt(2. / tau)
+      D = 0.00001  # Standard deviation.
       
       # Time-integrate over 1000 days (note: FABM's internal time unit is seconds!)
       dt = (t_eval[-1]-t_eval[0])/len(t_eval)
@@ -92,7 +89,7 @@ for s in range(ntrials):
           for j in range(len(model.state)):
               if i!=0:
                   if model.state_variables[j].name in varnames:
-                      y[s,i,j]=y[s,i-1,j]+dy[j]*dt + sigma_bis * sqrtdt * np.random.randn() * y[s,i-1,j]/1000.
+                      y[s,i,j]=y[s,i-1,j]+dy[j]*dt + D * sqrtdt * np.random.randn() * y[s,i-1,j]
                   else:
                       y[s,i,j]=y[s,i-1,j]+dy[j]*dt
           model.state[:]=y[s,i,:]
@@ -104,14 +101,16 @@ if rank == 0:
     for s in range(ntrials):
         r = s % nranks
         if r !=0 :
+          print(r)
           comm.Recv( [val[:], MPI.DOUBLE], source=r, tag=1 )
-          y_global[r,:] = val[r,:]
+          y_global[s,:] = val[s,:]
 else:
     val = np.zeros(y.shape)
     for s in range(ntrials):
         r = s % nranks
         if r == rank :
             comm.Send( [y[s,:], MPI.DOUBLE], dest=0, tag=1 )
+comm.Barrier()
 print('End of the loop',flush=True)
 
 if rank == 0 :
@@ -123,15 +122,15 @@ if rank == 0 :
    # time
   for i in range(len(t_eval)):
         for j in range(len(model.state)):
-            if i in (5, 5000, 9000):# and s == ntrials-1:
+            if i in (50, 5000, 9000):# and s == ntrials-1:
               if model.state_variables[j].name in varnames:
                 hist1, _ = np.histogram(y[:,i,j], bins=bins)
                 ax[k].plot((bins[1:] + bins[:-1]) / 2, hist1/ntrials,
-                    {5: '-', 5000: '.', 9000: '-.', }[i],
+                    {50: '-', 5000: '.', 9000: '-.', }[i],
                     label=f"t={i * dt / 86400:.2f}")
                 l.append(f"t={i * dt / 86400:.2f}")
                 ax[k].set_title(model.state_variables[j].name,fontsize=6)
-            #    ax[k].legend()
+                ax[8].legend()
                 ax[k].label_outer()
                 k+=1
         k=0
