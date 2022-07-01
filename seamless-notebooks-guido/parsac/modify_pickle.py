@@ -18,7 +18,7 @@ except:
 print("Init ...", flush=True)
 print(isParallel, flush=True)
 #get all nc paths
-filenames = glob.glob('/g100_scratch/userexternal/gocchipi/BFM_TOTAL/*/*.nc')
+filenames = glob.glob('/g100_scratch/userexternal/gocchipi/FUSSMAN_ZOOM/*/*.nc')
 filenames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
 
 indexes = np.zeros(len(filenames))
@@ -27,7 +27,7 @@ for iv,var in enumerate(filenames):
 
 #get target names
 
-mydoc = minidom.parse('bfm_sensitivity.xml')
+mydoc = minidom.parse('fuss_sensitivity.xml')
 target = []
 items = mydoc.getElementsByTagName('target')
 for i in range(len(items)):
@@ -39,6 +39,7 @@ print('nranks= '+str(nranks), flush=True)
 print('myrank= '+str(rank), flush=True)
 print(len(filenames), flush=True)
 output = np.zeros((len(filenames),len(target)))
+#for inc,ncname in enumerate(filenames[rank::nranks]) :
 for inc,ncname in enumerate(filenames) :
     i= inc % nranks
     if i == rank :
@@ -59,18 +60,23 @@ if rank == 0:
         i= inc % nranks
         print(i, flush=True)
         if i != 0:
-            comm.Recv( [val[:], MPI.DOUBLE], source=i, tag=3 )
-            output[inc,:]=val[:]
+            out = comm.recv( source=i, tag=1 )
+            output[int(out['idx']),:]=out['data']
 else :
     for inc,ncname in enumerate(filenames) :
         i = inc % nranks
+        out = {'idx':inc, 'data':output[inc,:]}
         if i == rank :
-            comm.Send( [output[inc,:], MPI.DOUBLE], dest=0, tag=3 )
+            comm.send( out, dest=0, tag=1 )
 print('End of the loop',flush=True)
 #add to the pickle file
 if rank ==0:
     print('Printing pickle...',flush=True)
-    pkname = 'bfm_sensitivity_total_script.pickle'
+    pkname = 'fuss_sensitivity_script.pickle'
+    #infile = open(pkname,'rb')
+    #new_dict = pickle.load(infile)
+    #infile.close()
+    #inputs = new_dict.get('X')
     outfile = open(pkname,'wb')
     out_dict = {'I':indexes, 'Y' : output}
     pickle.dump(out_dict,outfile)
