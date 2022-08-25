@@ -68,7 +68,7 @@ class LYAP(object):
                 used += 1
         print('Created: ', boxcnt)
         print('Used: ', used)
-        newdict = {'ndim':ndim, 'ires':ires, 'tau':tau, 'datcnt':self.datcnt, 'boxcnt':boxcnt, 'datmax':datmax, 'datmin':datmin, 'boxlen':boxlen, 'datptr':datptr[1:boxcnt+1], 'nxtbox':nxtbox[1:boxcnt+1, :ndim], 'where':where[1:boxcnt+1,:ndim], 'nxtdat':nxtdat[1:self.datcnt], 'data':self.data}
+        newdict = {'ndim':ndim, 'ires':ires, 'tau':tau, 'datcnt':self.datcnt, 'boxcnt':boxcnt, 'datmax':datmax, 'datmin':datmin, 'boxlen':boxlen, 'datptr':datptr[1:boxcnt+1], 'nxtbox':nxtbox[1:boxcnt+1, :ndim]-1, 'where':where[1:boxcnt+1,:ndim]-1, 'nxtdat':nxtdat[1:self.datcnt]-1, 'data':self.data}      #arrays scaled -1 due to different index notation from matlab
     
         return newdict
 
@@ -125,7 +125,7 @@ class LYAP(object):
                             iskip = 0
                     if iskip == 1:
                         continue
-                runner = 1
+                runner = 0
                 for i in range(ndim):
                     goto80 = 0
                     goto70 = 1
@@ -135,7 +135,7 @@ class LYAP(object):
                             goto80 = 1
                             break
                         runner = nxtbox[int(runner),i]
-                        if runner !=0 :
+                        if runner !=-1:
                             goto70 = 1
     
                     if goto80 == 1:
@@ -145,10 +145,10 @@ class LYAP(object):
                 if goto140 == 1:
                     continue
                 
-                if runner == 0:
+                if runner == -1:
                     continue
                 runner = datptr[int(runner)]
-                if runner == 0:
+                if runner == -1:
                     continue
                 goto90 = 1
                 while goto90 == 1:
@@ -188,7 +188,7 @@ class LYAP(object):
     
                     runner = nxtdat[int(runner)]
     
-                    if runner != 0 :
+                    if runner != -1:
                         goto90 = 1
                     
             irange += 1
