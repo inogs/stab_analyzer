@@ -16,27 +16,27 @@ class LYAP(object):
         , where[:boxcnt,:ndim], nxtdat[:datcnt], data
         in a dictionary
         """
-        delay = np.array([0,tau,(ndim-1)*tau])
-    
-        nxtbox = np.zeros((maxbox,ndim))
-        where = np.zeros((maxbox,ndim))
-        datptr =  np.zeros(maxbox)
-        nxtdat = np.zeros(self.datcnt)
-    
+        delay = np.array([0,tau,(ndim-1)*tau],dtype=int)
+
+        nxtbox = np.zeros((maxbox,ndim),dtype=int)
+        where = np.zeros((maxbox,ndim),dtype=int)
+        datptr =  np.full(maxbox,-1,dtype=int)
+        nxtdat = np.zeros(self.datcnt,dtype=int)
+
         datmin = min(self.data)
         datmax = max(self.data)
-    
+
         datmin = datmin - 0.01*(datmax - datmin)
         datmax = datmax + 0.01*(datmax - datmin)
-        boxlen = (datmax - datmin)/ires
+        boxlen = (datmax - datmin)/ires 
     
         boxcnt = 1
-    
+
         for i in range(int(self.datcnt-(ndim-1)*tau)):
-            target = np.floor((self.data[i+delay]-datmin)/boxlen)
+            target = np.floor((self.data[i+delay]-datmin)/boxlen).astype(int)
             runner = 1
             chaser = 0
-            
+
             j = 0
             while j < ndim:
                 tmp = where[int(runner),j]-target[j]
@@ -47,11 +47,11 @@ class LYAP(object):
                         continue
                 if tmp != 0 :
                     boxcnt += 1
-    
+
                     if boxcnt == maxbox:
                         print('Grid overflow, increase number of box count')
                         sys.exit()
-    
+
                     for k in range(ndim):
                         where[boxcnt,k] = where[int(chaser),k]
                     where[boxcnt,j] = target[j]
@@ -61,14 +61,15 @@ class LYAP(object):
                 j += 1
             nxtdat[i] = datptr[int(runner)]
             datptr[int(runner)] = i
-    
+            
         used = 0
         for i in range(boxcnt):
             if datptr[i] != 0:
                 used += 1
         print('Created: ', boxcnt)
         print('Used: ', used)
-        newdict = {'ndim':ndim, 'ires':ires, 'tau':tau, 'datcnt':self.datcnt, 'boxcnt':boxcnt, 'datmax':datmax, 'datmin':datmin, 'boxlen':boxlen, 'datptr':datptr[1:boxcnt+1], 'nxtbox':nxtbox[1:boxcnt+1, :ndim]-1, 'where':where[1:boxcnt+1,:ndim]-1, 'nxtdat':nxtdat[1:self.datcnt]-1, 'data':self.data}      #arrays scaled -1 due to different index notation from matlab
+        newdict = {'ndim':int(ndim), 'ires':int(ires), 'tau':int(tau), 'datcnt':self.datcnt, 'boxcnt':int(boxcnt), 'datmax':datmax, 'datmin':datmin, 'boxlen':boxlen, 'datptr':datptr[1:boxcnt+1], 'nxtbox':nxtbox[1:boxcnt+1, :ndim]-1, 'where':where[1:boxcnt+1,:ndim]-1, 'nxtdat':nxtdat[0:self.datcnt], 'data':self.data}
+    
     
         return newdict
 
@@ -86,16 +87,15 @@ class LYAP(object):
     
         oldcrd = data[int(oldpnt)+delay]
         zewcrd = data[int(newpnt)+delay]
-        igcrds = np.floor((oldcrd - datmin) / boxlen)
+        igcrds = np.floor((oldcrd - datmin) / boxlen).astype(int) -1 #added -1
         oldist = np.sqrt(np.sum(np.power(oldcrd - zewcrd,2)))
-        #print('old',oldist) 
-        irange = np.round(dismin/boxlen)
+        irange = int(np.round(dismin/boxlen))
         if irange == 0 :
             irange = 1
     
         thbest = thmax
         bstdis = dismax
-        bstpnt = 0
+        bstpnt = -1
     
         goto30 = 1
         while goto30 == 1:
@@ -105,23 +105,24 @@ class LYAP(object):
                 icounter = icnt
                 for i in range(ndim):
                     ipower = np.power(2*irange+1,ndim-(i+1))
-                    ioff = np.floor(icounter/ipower)
+                    ioff = int(np.floor(icounter/ipower))
                     icounter = icounter - ioff*ipower
                     target[i] = igcrds[i] - irange + ioff
-                    if target[i] < 0:       #out of the box?
+    
+                    if target[i] < -1:
                         goto140 = 1
                         break
-                    if target[i] > ires-1:  #out of the box?
+                    if target[i] > ires:
                         goto140 = 1
                         break
     
                 if goto140 ==1:
                     continue
-    
+
                 if irange != 1:
                     iskip = 1
                     for i in range(ndim):
-                        if abs(np.round(target[i] - igcrds[i])) == irange: #satisfied checked 
+                        if abs(int(np.round(target[i] - igcrds[i]))) == irange:
                             iskip = 0
                     if iskip == 1:
                         continue
@@ -135,16 +136,16 @@ class LYAP(object):
                             goto80 = 1
                             break
                         runner = nxtbox[int(runner),i]
-                        if runner !=-1:
+                        if runner !=-1 :
                             goto70 = 1
-    
+
                     if goto80 == 1:
                         continue
                     goto140 = 1
                     break
                 if goto140 == 1:
                     continue
-                
+    
                 if runner == -1:
                     continue
                 runner = datptr[int(runner)]
@@ -154,13 +155,12 @@ class LYAP(object):
                 while goto90 == 1:
                     goto90 = 0
                     while True:
-                        if abs(np.round(runner-oldpnt)) < evolve:
+                        if abs(int(np.round(runner-oldpnt))) < evolve:
                             break
-                        if abs(np.round(runner - datuse)) < (2*evolve):
+                        if abs(int(np.round(runner - datuse))) < (2*evolve):
                             break
-    
+
                         bstcrd = data[int(runner)+delay]
-                        
                         abc1 = oldcrd - bstcrd
                         abc2 = oldcrd - zewcrd
                         tdist = np.sum(abc1*abc1)
@@ -185,18 +185,15 @@ class LYAP(object):
                         bstdis = tdist
                         bstpnt = runner
                         break
-    
                     runner = nxtdat[int(runner)]
-    
                     if runner != -1:
                         goto90 = 1
-                    
+    
             irange += 1
-            if irange <= (0.5 + np.round((dismax/boxlen))):
+            if irange <= (0.5 + int(np.round((dismax/boxlen)))):
                 goto30 = 1
                 continue
             return bstpnt, bstdis, thbest
-
 
     def fet(db, dt, evolve, dismin, dismax, thmax):
     
@@ -231,7 +228,7 @@ class LYAP(object):
                     datptr, nxtdat, data, delay, oldpnt, newpnt, datuse, dismin, dismax, \
                     thmax, evolve)
             
-            while bstpnt == 0 :
+            while bstpnt == -1 :
                 dismax = dismax * 2
                 bstpnt, bstdis, thbest = LYAP.search(0, ndim, ires, datmin, boxlen, nxtbox, where, \
                     datptr, nxtdat, data, delay, oldpnt, newpnt, datuse, dismin, dismax, \
@@ -284,7 +281,7 @@ class LYAP(object):
                     datptr, nxtdat, data, delay, oldpnt, newpnt, datuse, dismin, dismax, \
                     thmax, evolve)
                 
-                if bstpnt != 0: 
+                if bstpnt != -1: 
                     newpnt = bstpnt
                     disold = bstdis
                     iang = np.floor(thbest)
