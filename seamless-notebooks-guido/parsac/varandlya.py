@@ -5,6 +5,8 @@ import numpy as np
 import netCDF4 as nc
 from xml.dom import minidom
 from scipy.stats import variation 
+import lyapunov
+
 try:
     from mpi4py import MPI
     comm  = MPI.COMM_WORLD
@@ -19,7 +21,7 @@ except:
 print("Init ...", flush=True)
 print(isParallel, flush=True)
 #get all nc paths
-filenames = glob.glob('/g100_scratch/userexternal/gocchipi/FUSSMAN_ZOOM/*/*.nc')
+filenames = glob.glob('/g100_scratch/userexternal/gocchipi/FUSSMAN_5c/*/*.nc')
 filenames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
 
 indexes = np.zeros(len(filenames))
@@ -95,7 +97,6 @@ l_cycles = np.zeros((len(filenames_cycle),len(varnames)))
 count_s_c=0
 sh=0
 tot = np.zeros(len(varnames))
-print(len(filenames_cycle))
 for inc,ncname in enumerate(filenames_cycle) :
     i= inc % nranks
     if i == rank :
@@ -104,10 +105,8 @@ for inc,ncname in enumerate(filenames_cycle) :
         except:
             pass
         for it,tname in enumerate(varnames):    #keep same order of xml file
-            #idx = f.variables.keys().index(tname)
             var = f.variables[tname][:,:,:,:]
-            #for key,var in zip(f.variables.keys(),f.variables.values()):
-            #    if tname == key:
+            lyap = lyapunov.LYAP(var[-int(9000):,0,0,0])
             if len(var[:,0,0,0])!=lenght:
                 count_s_c +=1
                 break
@@ -115,9 +114,8 @@ for inc,ncname in enumerate(filenames_cycle) :
                 break
             else :
                 output_cycles[it,:] += var[:,0,0,0]
-                var_cycles[inc,it] = variation(var[-int(9000):,0,0,0])
-                l_cycles[inc,it] = max(nolds.lyap_e(var[-int(9000):,0,0,0]))
-comm.Barrier()                
+                l_cycles[inc,it] = lyap.lyap_e()
+#comm.Barrier()
 print("collecting ranks",flush=True)
 if rank == 0:
     val = np.zeros((len(varnames),lenght))
@@ -128,35 +126,19 @@ if rank == 0:
     l_cycles_global = np.copy(l_cycles)
     count_c_global = count_s_c
     val2=np.zeros(1)
-    for inc in range(nranks) :
-        i= inc % nranks
-        print(i, flush=True)
-        if i != 0:
-            comm.Recv( [val2[:], MPI.DOUBLE], source=i, tag=1 )
-            #comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=2 )
-            comm.Recv( [val[:,:], MPI.DOUBLE], source=i, tag=3 )
-            output_cycles_global[:,:]+=val[:,:]
-            #shannon_cycles_global += val1[:]
-            count_c_global += val2[:]
-    print("collecting shannon", flush=True)
     for ipc,ncname in enumerate(filenames_cycle):
         i = ipc % nranks
         if i!=0: 
-            comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=2 )
             lya = comm.recv(source=i, tag=4 )
-            var_cycles_global[ipc,:] = val1[ipc,:]
             l_cycles_global[int(lya['idx']),:] = lya['data']
 else :
         val1=np.zeros(1)
         val2=np.zeros(1)
         val2[0]=float(count_s_c)
-        comm.Send( [val2, MPI.DOUBLE], dest=0, tag=1 )
-        comm.Send( [output_cycles[:,:], MPI.DOUBLE], dest=0, tag=3 )
         for ipc,ncname in enumerate(filenames_cycle) :
             i= ipc % nranks
             lya = {'idx':ipc, 'data': l_cycles[ipc,:,]}
             if i== rank :
-                comm.Send( [var_cycles[ipc,:], MPI.DOUBLE], dest=0, tag=2 )
                 comm.send( lya, dest=0, tag=4 )
 comm.Barrier()
 #       print(output_cycles[inc,:],flush=True)
