@@ -117,6 +117,7 @@ for inc,ncname in enumerate(filenames_cycle) :
                 output_cycles[it,:] += var[:,0,0,0]
                 var_cycles[inc,it] = variation(var[-int(9000):,0,0,0])
                 l_cycles[inc,it] = max(nolds.lyap_e(var[-int(9000):,0,0,0]))
+comm.Barrier()                
 print("collecting ranks",flush=True)
 if rank == 0:
     val = np.zeros((len(varnames),lenght))
