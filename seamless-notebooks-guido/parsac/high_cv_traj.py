@@ -134,38 +134,21 @@ for inc,ncname in enumerate(filenames_cycle_var) :
         f = nc.Dataset(ncname)
         for it,tname in enumerate(varnames):    #keep same order of xml file
             var = f.variables[tname][:,:,:,:]
-            output_cycles[it,:] += var[:,0,0,0]
-            var_cycles[inc,it] = variation(var[-int(lenght/5):,0,0,0])
             traj[inc,it,:] = var[:,0,0,0]
 print('collecting ranks', flush=True)
 if rank == 0:
-    val = np.zeros((len(varnames),lenght))
-    output_cycles_global = np.copy(output_cycles)
-    val1 = np.zeros((len(filenames_cycle_var),len(varnames))) 
-    var_cycles_global = np.copy(var_cycles)
-    count_c_global = count_s_c
-    val2=np.zeros(1)
-    traj_global = np.copy(traj)
-    val3 =  np.zeros((len(filenames_cycle_var),len(varnames),lenght)) 
-    for inc in range(nranks) :
-        i= inc % nranks
-        print(i, flush=True)
-        if i != 0:
-            count_c_global += val2[:]
-    print("collecting shannon", flush =True)
     for ipc,ncname in enumerate(filenames_cycle_var):
         i = ipc % nranks
         if i!=0: 
-            comm.Recv( [val3[:], MPI.DOUBLE], source=i, tag=4 )
-            traj_global[ipc,:] = val3[ipc,:]
-            print(ipc,flush=True)
+            dic = comm.recv( source=i, tag=4 )
+            traj_global[int(dic['idx']),:] = dic['data']
 else :
         print('sending...',flush=True)
         for ipc,ncname in enumerate(filenames_cycle_var) :
             i= ipc % nranks
+            dic = {'idx':ipc, 'data': traj[ipc,:,:]}
             if i== rank :
-                comm.Send( [traj[ipc,:,:], MPI.DOUBLE], dest=0, tag=4 )
-                print(ipc,flush=True)
+                comm.send( dic, dest=0, tag=4)
 print('End of the loop',flush=True)
 #compute means
 if rank == 0 :

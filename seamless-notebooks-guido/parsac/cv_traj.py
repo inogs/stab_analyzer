@@ -145,8 +145,8 @@ if rank == 0:
     for ipc,ncname in enumerate(filenames_cycle):
         i = ipc % nranks
         if i!=0: 
-            comm.Recv( [val1[:], MPI.DOUBLE], source=i, tag=2 )
-            var_cycles_global[ipc,:] = val1[ipc,:]
+            cv = comm.recv( source=i, tag=2 )
+            var_cycles_global[int(cv['idx']),:] = cv['data']
 else :
         val1=np.zeros(1)
         val2=np.zeros(1)
@@ -155,8 +155,9 @@ else :
         comm.Send( [output_cycles[:,:], MPI.DOUBLE], dest=0, tag=3 )
         for ipc,ncname in enumerate(filenames_cycle) :
             i= ipc % nranks
+            cv = {'idx':ipc, 'data': var_cycles[ipc,:]}
             if i== rank :
-                comm.Send( [var_cycles[ipc,:], MPI.DOUBLE], dest=0, tag=2 )
+                comm.send( cv, dest=0, tag=2)
 print('End of the loop',flush=True)
 if rank == 0 :
     norm = 1.0 / len(filenames_cycle)
