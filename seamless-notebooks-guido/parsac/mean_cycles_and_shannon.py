@@ -42,7 +42,7 @@ outputs = new_dictout.get('Y')
 outputs = outputs.tolist()
 #restrict inputs to the existing directories
 inputs = [inputs[int(i)] for i in indexes]
-#outputs = [outputs[int(i)] for i in indexes]
+outputs = [outputs[int(i)] for i in indexes]
 #get target names
 
 mydoc = minidom.parse('bfm_sensitivity.xml')
@@ -95,12 +95,12 @@ for o in range(len(outputs)):
 #select directories with cycling behaviour for small N1p (<0.35)
 cyclesind =[]
 for i in range(len(inputs)):
-    if count[i]==1 and inputs[i][N1p]<0.35 : 
+    if count[i]==1 : 
         cyclesind.append(i)
 #select directories with non-cycling behaviour for large N1p (>0.35)
 linind = []
 for i in range(len(inputs)):
-    if count[i]==0 and inputs[i][N1p]>0.35 :
+    if count[i]==0 :
         linind.append(i)
 #lenght of trajectories
 lenght = 10000
@@ -166,7 +166,6 @@ else :
             if i== rank :
                 comm.Send( [shannon_cycles[ipc,0], MPI.DOUBLE], dest=0, tag=2 )
 print('End of the loop',flush=True)
-txt_file.close()
 print('starting non cycling')
 # non-cycling trajectories
 output_lin = np.zeros((len(varnames),lenght))
