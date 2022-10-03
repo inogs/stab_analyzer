@@ -1,4 +1,3 @@
-import nolds
 import pickle
 import glob
 import numpy as np
@@ -21,7 +20,7 @@ except:
 print("Init ...", flush=True)
 print(isParallel, flush=True)
 #get all nc paths
-filenames = glob.glob('/g100_scratch/userexternal/gocchipi/FUSSMAN_5c/*/*.nc')
+filenames = glob.glob('/g100_scratch/userexternal/gocchipi/BFM_TOTAL/*/*.nc')
 filenames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
 
 indexes = np.zeros(len(filenames))
@@ -29,11 +28,11 @@ for iv,var in enumerate(filenames):
      indexes[iv] = int(var.rsplit('/')[-2])
 
 #interested variables names
-varnames = ["P1_DW1","P1_DW2","P1_DW3","C1_DWC1","C1_DWC2","X_DWX1","Y_DWY1","Z_DWZ1"]
+varnames = ["B1_c","P1_c","P2_c","P3_c","P4_c","Z5_c","Z6_c","Z3_c","Z4_c"]
 #get the cycling simulation for small N1p
 
-pknamein = "fuss_sensitivity_5c.pickle"
-pknameout = 'fuss_sensitivity_script.pickle'
+pknamein = "bfm_sensitivity_total.pickle"
+pknameout = 'bfm_sensitivity_total_script.pickle'
 #pknameout = 'bfm_sensitivity_total.pickle'
 infile = open(pknamein,'rb')
 new_dictin = pickle.load(infile)
@@ -46,10 +45,10 @@ outputs = new_dictout.get('Y')
 outputs = outputs.tolist()
 #restrict inputs to the existing directories
 inputs = [inputs[int(i)] for i in indexes]
-#outputs = [outputs[int(i)] for i in indexes]
+outputs = [outputs[int(i)] for i in indexes]
 #get target names
 
-mydoc = minidom.parse('fuss_sensitivity.xml')
+mydoc = minidom.parse('bfm_sensitivity.xml')
 target = []
 items = mydoc.getElementsByTagName('target')
 for i in range(len(items)):
@@ -87,54 +86,66 @@ for i in range(len(inputs)):
     if count[i]==0:# and inputs[i][N1p]>0.35 :
         linind.append(i)
 #lenght of trajectories
-lenght = 60000
+lenght = 10000 
 # cycling trajectories
-output_cycles = np.zeros((len(varnames),lenght))
 filenames_cycle = [filenames[i] for i in cyclesind]
-p_cycles = np.zeros(len(varnames))
-var_cycles = np.zeros((len(filenames_cycle),len(varnames))) 
 l_cycles = np.zeros((len(filenames_cycle),len(varnames))) 
 count_s_c=0
-sh=0
 tot = np.zeros(len(varnames))
-for inc,ncname in enumerate(filenames_cycle) :
+
+#restrict to not done folders
+txtnames = glob.glob('/g100_work/icei_Rosati/seamless-notebooks-guido/parsac/test/*.txt')
+txtnames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
+txtnames = [(v.rsplit('/')[-1]).rsplit('.')[-2] for v in txtnames]
+txtnames = ['/g100_scratch/userexternal/gocchipi/BFM_TOTAL/'+v+'/result.nc' for v in txtnames]
+newnames = [x for x in filenames_cycle if x not in txtnames]
+
+for inc,ncname in enumerate(newnames[:1000]) :
     i= inc % nranks
     if i == rank :
         try:
             f = nc.Dataset(ncname)
         except:
             pass
+        filename = 'test/'+ncname.rsplit('/')[-2]+'.txt'
+        with open(filename, "w+") as o:
+            o.write('')
         for it,tname in enumerate(varnames):    #keep same order of xml file
-            var = f.variables[tname][:,:,:,:]
-            lyap = lyapunov.LYAP(var[-int(9000):,0,0,0])
-            if len(var[:,0,0,0])!=lenght:
-                count_s_c +=1
-                break
-            elif var[-1,0,0,0]<0.0001:
-                break
-            else :
-                output_cycles[it,:] += var[:,0,0,0]
-                l_cycles[inc,it] = lyap.lyap_e()
+                var = f.variables[tname][:,:,:,:]
+                lyap = lyapunov.LYAP(var[-int(9000):,0,0,0])
+                if len(var[:,0,0,0])!=lenght:
+                    break
+                else :
+                    try:
+                        l_cycles[inc,it] = lyap.lyap_e(dt=3650./10000.)
+                        with open(filename, "a") as o:
+                            o.write(str(l_cycles[inc,it])+'\n')
+                        print('created '+filename,flush=True)
+                    except:
+                        print('error: '+ncname+' '+tname,flush=True)
+                        count_s_c +=1
+                        pass
 #comm.Barrier()
 print("collecting ranks",flush=True)
 if rank == 0:
-    val = np.zeros((len(varnames),lenght))
-    output_cycles_global = np.copy(output_cycles)
-    val1 = np.zeros((len(filenames_cycle),len(varnames))) 
-    val3 = np.zeros((len(filenames_cycle),len(varnames))) 
-    var_cycles_global = np.copy(var_cycles)
     l_cycles_global = np.copy(l_cycles)
     count_c_global = count_s_c
     val2=np.zeros(1)
+    for inc in range(nranks) :
+        i= inc % nranks
+        print(i, flush=True)
+        if i != 0:
+            comm.Recv( [val2[:], MPI.DOUBLE], source=i, tag=1 )
+            count_c_global += val2[:]
     for ipc,ncname in enumerate(filenames_cycle):
         i = ipc % nranks
         if i!=0: 
             lya = comm.recv(source=i, tag=4 )
             l_cycles_global[int(lya['idx']),:] = lya['data']
 else :
-        val1=np.zeros(1)
         val2=np.zeros(1)
         val2[0]=float(count_s_c)
+        comm.Send( [val2, MPI.DOUBLE], dest=0, tag=1 )
         for ipc,ncname in enumerate(filenames_cycle) :
             i= ipc % nranks
             lya = {'idx':ipc, 'data': l_cycles[ipc,:,]}
@@ -145,15 +156,13 @@ comm.Barrier()
 print('End of the loop',flush=True)
 #compute means
 if rank == 0 :
-    norm = 1.0 / len(filenames_cycle)
-    mean_var_cycles = np.mean(var_cycles_global,0)
     print('pickling',flush=True)
     pkname = 'var.pickle'
     outfile = open(pkname,'wb')
-    out_dict = {'C': mean_var_cycles, 'SC': var_cycles_global, 'L': l_cycles_global}
+    out_dict = {'L': l_cycles_global}
     pickle.dump(out_dict,outfile)
     outfile.close()
-    print('extincted: ',count_c_global)
+    print('errors: ',count_c_global)
     print('not-steady: ', len(filenames_cycle))
 
 
