@@ -63,8 +63,8 @@ class LYAP(object):
             datptr[int(runner)] = i
             
         used = 0
-        for i in range(boxcnt):
-            if datptr[i] != 0:
+        for i in range(boxcnt+1):
+            if datptr[i] != -1:
                 used += 1
         print('Created: ', boxcnt)
         print('Used: ', used)
@@ -263,6 +263,8 @@ class LYAP(object):
     
                 SUM = SUM + np.log(disnew/disold)
                 zlyap =  SUM/(its*evolve*dt*np.log(2))    # base 2 Lyapunov exponent 
+#               print('***********')
+#               print('z_lyap:  ',zlyap)
     
                 out = [out, its*evolve, disold, disnew, zlyap, (oldpnt-evolve), (newpnt-evolve)]
     
