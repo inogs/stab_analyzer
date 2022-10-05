@@ -39,6 +39,7 @@ class LYAP(object):
 
             j = 0
             while j < ndim:
+                print('count8',flush=True)
                 tmp = where[int(runner),j]-target[j]
                 if tmp < 0:
                     chaser = runner
@@ -66,8 +67,11 @@ class LYAP(object):
         for i in range(boxcnt+1):
             if datptr[i] != -1:
                 used += 1
-        print('Created: ', boxcnt)
-        print('Used: ', used)
+#       print('Created: ', boxcnt,flush=True)
+#       print('Used: ', used,flush=True)
+#       print('nxtbox',nxtbox[1:boxcnt+1, :ndim]-1)
+#       print('where',where[1:boxcnt+1,:ndim]-1)
+#       print('datptr',datptr[1:boxcnt+1])
         newdict = {'ndim':int(ndim), 'ires':int(ires), 'tau':int(tau), 'datcnt':self.datcnt, 'boxcnt':int(boxcnt), 'datmax':datmax, 'datmin':datmin, 'boxlen':boxlen, 'datptr':datptr[1:boxcnt+1], 'nxtbox':nxtbox[1:boxcnt+1, :ndim]-1, 'where':where[1:boxcnt+1,:ndim]-1, 'nxtdat':nxtdat[0:self.datcnt], 'data':self.data}
     
     
@@ -81,7 +85,7 @@ class LYAP(object):
         searches for the most viable point for fet
         return bstpnt, bstdis, thbest
         """
-        target = np.zeros(ndim)
+        target = np.zeros(ndim,dtype=int)
         oldcrd = np.zeros(ndim)
         zewcrd = np.zeros(ndim)
     
@@ -99,20 +103,22 @@ class LYAP(object):
     
         goto30 = 1
         while goto30 == 1:
+            print('count4',flush=True)
             goto30 = 0
             for icnt in range(int(((2*irange+1)**ndim))):
                 goto140 = 0
                 icounter = icnt
                 for i in range(ndim):
-                    ipower = np.power(2*irange+1,ndim-(i+1))
+                    ipower = int(np.power(2*irange+1,ndim-(i+1)))
                     ioff = int(np.floor(icounter/ipower))
                     icounter = icounter - ioff*ipower
                     target[i] = igcrds[i] - irange + ioff
+#                    print('ipower',ipower,' ',ioff,' ',icounter,' ',target,flush=True)
     
                     if target[i] < -1:
                         goto140 = 1
                         break
-                    if target[i] > ires:
+                    if target[i] > ires-2:
                         goto140 = 1
                         break
     
@@ -131,12 +137,13 @@ class LYAP(object):
                     goto80 = 0
                     goto70 = 1
                     while goto70 == 1:
+                        print('count5',flush=True)
                         goto70 = 0
                         if where[int(runner),i] == target[i]:
                             goto80 = 1
                             break
                         runner = nxtbox[int(runner),i]
-                        if runner !=-1 :
+                        if int(runner) !=-1 :
                             goto70 = 1
 
                     if goto80 == 1:
@@ -146,15 +153,17 @@ class LYAP(object):
                 if goto140 == 1:
                     continue
     
-                if runner == -1:
+                if int(runner) == -1:
                     continue
                 runner = datptr[int(runner)]
-                if runner == -1:
+                if int(runner) == -1:
                     continue
                 goto90 = 1
                 while goto90 == 1:
+                    print('count6',flush=True)
                     goto90 = 0
                     while True:
+                        print('count7',flush=True)
                         if abs(int(np.round(runner-oldpnt))) < evolve:
                             break
                         if abs(int(np.round(runner - datuse))) < (2*evolve):
@@ -224,11 +233,12 @@ class LYAP(object):
         goto50 = 1
         while goto50 == 1:
             goto50 = 0
+            print('count1',flush=True)
             bstpnt, bstdis, thbest = LYAP.search(0, ndim, ires, datmin, boxlen, nxtbox, where, \
                     datptr, nxtdat, data, delay, oldpnt, newpnt, datuse, dismin, dismax, \
                     thmax, evolve)
-            
             while bstpnt == -1 :
+                print('count2',flush=True)
                 dismax = dismax * 2
                 bstpnt, bstdis, thbest = LYAP.search(0, ndim, ires, datmin, boxlen, nxtbox, where, \
                     datptr, nxtdat, data, delay, oldpnt, newpnt, datuse, dismin, dismax, \
@@ -241,6 +251,7 @@ class LYAP(object):
     
             goto60 = 1
             while goto60 == 1:
+                print('count3',flush=True)
                 goto60 = 0
     
                 oldpnt += evolve
@@ -263,8 +274,8 @@ class LYAP(object):
     
                 SUM = SUM + np.log(disnew/disold)
                 zlyap =  SUM/(its*evolve*dt*np.log(2))    # base 2 Lyapunov exponent 
-#               print('***********')
-#               print('z_lyap:  ',zlyap)
+                print('***********',flush=True)
+                print('z_lyap:  ',zlyap,flush=True)
     
                 out = [out, its*evolve, disold, disnew, zlyap, (oldpnt-evolve), (newpnt-evolve)]
     
