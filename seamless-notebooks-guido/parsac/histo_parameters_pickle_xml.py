@@ -47,28 +47,22 @@ keyOh= 'O3h_h'
 keyR3c = 'R3_c'
 false_index = []
 for i,name in enumerate(target):
-    if name.find(key) !=-1 or name.find(keyOc) !=-1 or name.find(keyOh) !=-1 or name.find(keyR3c) !=-1 or name.find(keyO2o):
+    if name.find(key) !=-1 or name.find(keyOc) !=-1 or name.find(keyOh) !=-1 or name.find(keyR3c) !=-1 or name.find(keyO2o) !=-1 :
+        print(name)
         false_index.append(i)
 
 infile = open(args.pickle,'rb')
 new_dict = pickle.load(infile)
 infile.close()
-#infile1 = open('bfm_sensitivity_total.pickle','rb')
-#new_dict1 = pickle.load(infile1)
-#infile1.close()
-fig, axs = plt.subplots(10, 10)
-fig1, ax1 = plt.subplots(10,10)
-fig2, ax2 = plt.subplots(6,10)
-plt.rcParams.update({'font.size': 4})
-col = 0
-col1 = 0
-col2 = 0
-inputs = new_dict.get('X')
+infile1 = open('bfm_sensitivity_total.pickle','rb')
+new_dict1 = pickle.load(infile1)
+infile1.close()
+inputs = new_dict1.get('X')
 outputs = new_dict.get('Y')
 outputs = outputs.tolist()
 #limit inputs to the folders generated
-#indexes = new_dict.get('I')
-#inputs = [inputs[int(i)] for i in indexes]
+indexes = new_dict.get('I')
+inputs = [inputs[int(i)] for i in indexes]
 
 
 for i in range(len(outputs)):  #remove O5
@@ -77,14 +71,41 @@ for i in range(len(outputs)):  #remove O5
 for ind in sorted(false_index, reverse=True):
     target.pop(ind)
 
+variable_counter = np.zeros(int(len(outputs[0])/2))
+
 count = np.zeros(len(inputs))
 for o in range(len(outputs)):
     for i in range(int(len(outputs[o])/2)):
         if outputs[o][2*i]+outputs[o][2*i+1]==2:
-    #if np.sum(outputs[o][1::2]) >1:
             count[o]=1
+            variable_counter[i]+=1
         else :
-            pass#count[o]=0
+            pass
+variable_counter = variable_counter / len(outputs)
+target_sorted = target[0::2]
+target_sorted = [x.rsplit('_')[0]+x.rsplit('_')[1] for _, x in sorted(zip(variable_counter, target_sorted))]
+variable_counter = [x for x,_ in sorted(zip(variable_counter, target_sorted))]
+print(target_sorted)
+print(variable_counter)
+for i,v in enumerate(variable_counter):
+    print(target_sorted[i],v)
+fig_h, axs_h = plt.subplots()
+axs_h.bar(target_sorted[-10:], variable_counter[-10:],align='center',color=(0.2, 0.4, 0.6, 0.6))
+fig_h.savefig('variable_histo.png', format='png',dpi=150)
+lll = 0
+for l in count:
+    if l==1:
+        lll+=1
+print('total sample',len(outputs))
+print('non-stationary',lll)
+print('fraction',lll/len(outputs))
+fig, axs = plt.subplots(10, 10)
+fig1, ax1 = plt.subplots(10,10)
+fig2, ax2 = plt.subplots(6,10)
+plt.rcParams.update({'font.size': 4})
+col = 0
+col1 = 0
+col2 = 0
 x = np.zeros(len(inputs))
 for i in range(len(inputs[0])):
     for j in range(len(inputs)):
@@ -174,7 +195,7 @@ ax2[5,4].plot(bins, hist/hist_norm,c='black')
 
 for iax,ax in enumerate(fig.get_axes()):
     ax.label_outer()
-    ax.axhline(y=0.05, color='r', linestyle="dotted")
+    ax.axhline(y=0.5, color='r', linestyle="dotted")
     ax.set_ylim(0, 1)
     ax.set_xticks([])
     ax.set_yticks([])

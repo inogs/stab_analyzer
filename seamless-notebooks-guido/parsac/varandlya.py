@@ -4,7 +4,7 @@ import numpy as np
 import netCDF4 as nc
 from xml.dom import minidom
 from scipy.stats import variation 
-import lyapunov
+import lyapunovV
 
 try:
     from mpi4py import MPI
@@ -38,14 +38,14 @@ infile = open(pknamein,'rb')
 new_dictin = pickle.load(infile)
 infile.close()
 inputs = new_dictin.get('X')
-infile = open(pknameout,'rb')
-new_dictout = pickle.load(infile)
-infile.close()
+infile1 = open(pknameout,'rb')
+new_dictout = pickle.load(infile1)
+infile1.close()
 outputs = new_dictout.get('Y')
 outputs = outputs.tolist()
 #restrict inputs to the existing directories
 inputs = [inputs[int(i)] for i in indexes]
-outputs = [outputs[int(i)] for i in indexes]
+#outputs = [outputs[int(i)] for i in indexes]
 #get target names
 
 mydoc = minidom.parse('bfm_sensitivity.xml')
@@ -64,6 +64,31 @@ for i in range(len(items)):
         parameters.append(string.rsplit('/')[1]+string.rsplit('/')[-1])
     else :
         parameters.append(string.rsplit('/')[1]+string.rsplit('/')[-1])
+
+#get targets names
+target = []
+items = mydoc.getElementsByTagName('target')
+for i in range(len(items)):
+    string = items[i].attributes['name'].value
+    target.append(string)
+#remove 05 03c 03h R3c
+
+#### REMOVE ALSO O2O
+
+key = 'O5'
+keyOc= 'O3_c'
+keyO2o= 'O2_o'
+keyOh= 'O3h_h'
+keyR3c = 'R3_c'
+false_index = []
+for i,name in enumerate(target):
+    if name.find(key) !=-1 or name.find(keyOc) !=-1 or name.find(keyOh) !=-1 or name.find(keyR3c) !=-1 or name.find(keyO2o) !=-1 :    
+        false_index.append(i)
+for i in range(len(outputs)):  #remove O5
+    for ind in sorted(false_index, reverse=True):
+         outputs[i].pop(ind)
+for ind in sorted(false_index, reverse=True):
+    target.pop(ind)
 
 #count cycles        
 count = np.zeros(len(inputs))
@@ -89,42 +114,53 @@ for i in range(len(inputs)):
 lenght = 10000 
 # cycling trajectories
 filenames_cycle = [filenames[i] for i in cyclesind]
-l_cycles = np.zeros((len(filenames_cycle),len(varnames))) 
+l_cycles = np.full(len(filenames_cycle),-1,dtype=float) 
+#l_cycles = np.zeros(len(filenames_cycle)) 
 count_s_c=0
 tot = np.zeros(len(varnames))
 
 #restrict to not done folders
-txtnames = glob.glob('/g100_work/icei_Rosati/seamless-notebooks-guido/parsac/test/*.txt')
-txtnames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
-txtnames = [(v.rsplit('/')[-1]).rsplit('.')[-2] for v in txtnames]
-txtnames = ['/g100_scratch/userexternal/gocchipi/BFM_TOTAL/'+v+'/result.nc' for v in txtnames]
-newnames = [x for x in filenames_cycle if x not in txtnames]
-
-for inc,ncname in enumerate(newnames[:1000]) :
+#txtnames = glob.glob('/g100_work/icei_Rosati/seamless-notebooks-guido/parsac/test/*.txt')
+#txtnames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
+#txtnames = [(v.rsplit('/')[-1]).rsplit('.')[-2] for v in txtnames]
+#txtnames = ['/g100_scratch/userexternal/gocchipi/BFM_TOTAL/'+v+'/result.nc' for v in txtnames]
+#newnames = [x for x in filenames_cycle if x not in txtnames]
+cv = np.zeros(len(varnames))
+print('len cycles',len(filenames_cycle))
+for inc,ncname in enumerate(filenames_cycle) :
+    print('analyzing ', ncname, flush=True)
     i= inc % nranks
     if i == rank :
         try:
             f = nc.Dataset(ncname)
         except:
-            pass
+            continue 
         filename = 'test/'+ncname.rsplit('/')[-2]+'.txt'
         with open(filename, "w+") as o:
             o.write('')
         for it,tname in enumerate(varnames):    #keep same order of xml file
                 var = f.variables[tname][:,:,:,:]
-                lyap = lyapunov.LYAP(var[-int(9000):,0,0,0])
-                if len(var[:,0,0,0])!=lenght:
-                    break
-                else :
-                    try:
-                        l_cycles[inc,it] = lyap.lyap_e(dt=3650./10000.)
-                        with open(filename, "a") as o:
-                            o.write(str(l_cycles[inc,it])+'\n')
-                        print('created '+filename,flush=True)
-                    except:
-                        print('error: '+ncname+' '+tname,flush=True)
-                        count_s_c +=1
-                        pass
+                cv[it] = variation(var[-int(lenght/5):,0,0,0])
+        it = np.argmax(cv)
+        tname = varnames[it]
+        var = f.variables[tname][:,:,:,:]
+        lyap = lyapunovV.LYAP(var[-int(9000):,0,0,0])
+        if len(var[:,0,0,0])!=lenght:
+            print('error: '+ncname+' '+tname,flush=True)
+            continue
+        else :
+            try:
+              l_cycles[inc] = lyap.lyap_e(dt=3650./10000.)
+              with open(filename, "a") as o:
+                 o.write(str(l_cycles[inc])+'\n')
+              print('created '+filename,flush=True)
+            except:
+              with open(filename, "a") as o:
+                 o.write(str(l_cycles[inc])+'\n')
+              print('error: '+ncname+' '+tname,flush=True)
+              count_s_c +=1
+              pass
+        f.close()
 #comm.Barrier()
 print("collecting ranks",flush=True)
 if rank == 0:
@@ -141,14 +177,14 @@ if rank == 0:
         i = ipc % nranks
         if i!=0: 
             lya = comm.recv(source=i, tag=4 )
-            l_cycles_global[int(lya['idx']),:] = lya['data']
+            l_cycles_global[int(lya['idx'])] = lya['data']
 else :
         val2=np.zeros(1)
         val2[0]=float(count_s_c)
         comm.Send( [val2, MPI.DOUBLE], dest=0, tag=1 )
         for ipc,ncname in enumerate(filenames_cycle) :
             i= ipc % nranks
-            lya = {'idx':ipc, 'data': l_cycles[ipc,:,]}
+            lya = {'idx':ipc, 'data': l_cycles[ipc]}
             if i== rank :
                 comm.send( lya, dest=0, tag=4 )
 comm.Barrier()

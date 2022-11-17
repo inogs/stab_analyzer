@@ -18,7 +18,7 @@ except:
 print("Init ...", flush=True)
 print(isParallel, flush=True)
 #get all nc paths
-filenames = glob.glob('/g100_scratch/userexternal/gocchipi/FUSSMAN_ZOOM/*/*.nc')
+filenames = glob.glob('/g100_scratch/userexternal/gocchipi/BFM_TOTAL/*/*.nc')
 filenames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
 
 indexes = np.zeros(len(filenames))
@@ -27,7 +27,7 @@ for iv,var in enumerate(filenames):
 
 #get target names
 
-mydoc = minidom.parse('fuss_sensitivity.xml')
+mydoc = minidom.parse('bfm_sensitivity.xml')
 target = []
 items = mydoc.getElementsByTagName('target')
 for i in range(len(items)):
@@ -46,7 +46,7 @@ for inc,ncname in enumerate(filenames) :
         try:
             f = nc.Dataset(ncname)
         except:
-            pass   
+            continue   
         for it,tname in enumerate(target):    #keep same order of xml file
             for ik,key in enumerate(f.variables.keys()):
                 if tname == key :
@@ -60,19 +60,25 @@ if rank == 0:
         i= inc % nranks
         print(i, flush=True)
         if i != 0:
-            out = comm.recv( source=i, tag=1 )
-            output[int(out['idx']),:]=out['data']
+#           comm.Recv( [idx_inc, MPI.INT], source=i, tag=1 )
+            #comm.Recv( [idx_it, MPI.INT], source=i, tag=2 )
+            comm.Recv( [val[:], MPI.DOUBLE], source=i, tag=3 )
+            output[inc,:]=val[:]
+            #print("inc: "+str(inc),flush=True)
+            #print(val[:],flush=True)
 else :
     for inc,ncname in enumerate(filenames) :
         i = inc % nranks
-        out = {'idx':inc, 'data':output[inc,:]}
         if i == rank :
-            comm.send( out, dest=0, tag=1 )
+#           comm.Send( [inc, MPI.INT], dest=0, tag=1 )
+            comm.Send( [output[inc,:], MPI.DOUBLE], dest=0, tag=3 )
+#           print(output[inc,:],flush=True)
 print('End of the loop',flush=True)
+comm.Barrier()
 #add to the pickle file
 if rank ==0:
     print('Printing pickle...',flush=True)
-    pkname = 'fuss_sensitivity_script.pickle'
+    pkname = 'bfm_sensitivity_total_script.pickle'
     #infile = open(pkname,'rb')
     #new_dict = pickle.load(infile)
     #infile.close()
