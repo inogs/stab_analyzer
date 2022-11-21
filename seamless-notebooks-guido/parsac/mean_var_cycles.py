@@ -181,7 +181,7 @@ if rank == 0:
 else :
         for ipc,ncname in enumerate(filenames_cycle) :
             i= ipc % nranks
-            dic = {'data':var_cycles[ipc,:], 'idx',ipc}
+            dic = {'data':var_cycles[ipc,:], 'idx':ipc}
             if i== rank :
                 comm.send(dic,dest=0,tag=1)
 print('End of the loop',flush=True)
