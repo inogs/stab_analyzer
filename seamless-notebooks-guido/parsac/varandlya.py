@@ -20,7 +20,7 @@ except:
 print("Init ...", flush=True)
 print(isParallel, flush=True)
 #get all nc paths
-filenames = glob.glob('/g100_scratch/userexternal/gocchipi/BFM_TOTAL/*/*.nc')
+filenames = glob.glob('/g100_scratch/userexternal/gocchipi/BFM_TOTAL_HIGH/*/*.nc')
 filenames.sort(key=lambda x: int(''.join(filter(str.isdigit, x)))) #sort by number
 
 indexes = np.zeros(len(filenames))
@@ -29,10 +29,13 @@ for iv,var in enumerate(filenames):
 
 #interested variables names
 varnames = ["B1_c","P1_c","P2_c","P3_c","P4_c","Z5_c","Z6_c","Z3_c","Z4_c"]
+#varnames = ["Z3_c","B1_c","P4_c","Z5_c","Z4_c"]
 #get the cycling simulation for small N1p
 
-pknamein = "bfm_sensitivity_total.pickle"
-pknameout = 'bfm_sensitivity_total_script.pickle'
+pknamein = "bfm_sensitivity_highcv.pickle"
+#pknamein = "bfm_sensitivity_omnchain.pickle"
+#pknameout = 'bfm_sensitivity_high_script.pickle'
+pknameout = 'bfm_sensitivity_total_extinction.pickle'
 #pknameout = 'bfm_sensitivity_total.pickle'
 infile = open(pknamein,'rb')
 new_dictin = pickle.load(infile)
@@ -46,6 +49,7 @@ outputs = outputs.tolist()
 #restrict inputs to the existing directories
 inputs = [inputs[int(i)] for i in indexes]
 #outputs = [outputs[int(i)] for i in indexes]
+outputs_living = np.copy(outputs).tolist()
 #get target names
 
 mydoc = minidom.parse('bfm_sensitivity.xml')
@@ -54,7 +58,7 @@ items = mydoc.getElementsByTagName('target')
 for i in range(len(items)):
     string = items[i].attributes['name'].value
     target.append(string)
-
+target_living = np.copy(target).tolist()
 #get parameters name from the xml
 items = mydoc.getElementsByTagName('parameter')
 parameters = []
@@ -99,6 +103,29 @@ for o in range(len(outputs)):
             count[o]=1
         else :
             pass
+
+#only living species
+right_index_living = []
+for i,name in enumerate(target_living):
+    for vname in varnames:
+        if name.find(vname) == 0 :
+            right_index_living.append(i)
+for i in range(len(outputs_living)):  #remove O5
+         outputs_living[i] = [outputs_living[i][ind] for ind in sorted(right_index_living, reverse=True)]
+target_living = [target_living[ind] for ind in sorted(right_index_living, reverse=True)]
+count_living = np.zeros(len(inputs))
+for o in range(len(outputs_living)):
+    for i in range(int(len(outputs_living[o])/2)):
+        if outputs_living[o][2*i]+outputs_living[o][2*i+1]==2:
+            count_living[o]=1
+        else :
+            pass
+
+count = count_living
+outputs = outputs_living
+target = target_living
+
+
 #select directories with cycling behaviour
 cyclesind =[]
 for i in range(len(inputs)):
@@ -135,12 +162,15 @@ for inc,ncname in enumerate(filenames_cycle) :
             f = nc.Dataset(ncname)
         except:
             continue 
-        filename = 'test/'+ncname.rsplit('/')[-2]+'.txt'
+        filename = 'test_total/'+ncname.rsplit('/')[-2]+'.txt'
         with open(filename, "w+") as o:
             o.write('')
         for it,tname in enumerate(varnames):    #keep same order of xml file
                 var = f.variables[tname][:,:,:,:]
-                cv[it] = variation(var[-int(lenght/5):,0,0,0])
+                if any(var[:,0,0,0]<0.00001):
+                    pass
+                else:
+                    cv[it] = variation(var[-int(lenght/5):,0,0,0])
         it = np.argmax(cv)
         tname = varnames[it]
         var = f.variables[tname][:,:,:,:]
@@ -193,7 +223,7 @@ print('End of the loop',flush=True)
 #compute means
 if rank == 0 :
     print('pickling',flush=True)
-    pkname = 'var.pickle'
+    pkname = 'lyapunov_total.pickle'
     outfile = open(pkname,'wb')
     out_dict = {'L': l_cycles_global}
     pickle.dump(out_dict,outfile)
