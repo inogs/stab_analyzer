@@ -10,14 +10,13 @@ import subprocess
 #import statsmodels.api as sm
 from scipy.stats import variation
 
-ensamble_counter=int(np.loadtxt('ensamble_counter.txt'))
+#ensamble_counter=int(np.loadtxt('ensamble_counter.txt'))
 
-command='/g100_scratch/userexternal/gocchipi/BFM_TOTAL/' + str(ensamble_counter).zfill(6) + '/'
-:q
+#command='/g100_scratch/userexternal/gocchipi/BFM_TOTAL_0dot01/' + str(ensamble_counter).zfill(6) + '/'
 
 
-subprocess.run(["mkdir","-p",command])
-subprocess.run(["cp","fabm.yaml",command])
+#subprocess.run(["mkdir","-p",command])
+#subprocess.run(["cp","fabm.yaml",command])
 # Create model (loads fabm.yaml)
 model = pyfabm.Model('fabm.yaml')
 
@@ -110,7 +109,7 @@ for v,variable in enumerate(model.state_variables):
 # Sensibility targets
 
 #critical lenght for cycles
-epsilon = 0.001
+epsilon = 0.01
 for v,variable in enumerate(model.state_variables):
 
 #coeff of variance
@@ -193,4 +192,4 @@ for v,variable in enumerate(model.state_variables):
 #    P1_fstate.long_name = variable.name.replace("/","_") + "_final_state"
 #    f.variables[ncfstate][:]=fstate
 f.close()
-subprocess.run(["cp","result.nc",command])
+#subprocess.run(["cp","result.nc",command])
