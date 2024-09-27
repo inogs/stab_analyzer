@@ -2,11 +2,11 @@
 This repository contains the code which has been used to study the temporal stability of ecosystems in (Occhipinti et al. 2023, Occhipinti et al. 2024):
 - **lyapunov.py** A python class which computes the maximum Lyapunov exponent of a timeseries following Wolf et al. (1985).
 - **lyapunovV.py** A faster version of the class lyapunov.py, thanks to a vectorization of procedures.
-- **seamless-notebooks-guido** The code used in the studies (Occhipinti et al. 2023, Occhipinti et al. 2024)
+- **seamless-notebooks-guido** The code used in the studies (Occhipinti et al. 2023, Occhipinti et al. 2024), it make uses of the fabm and parsac framework embedded in [BoldingBruggeman/seamless-notebooks/](https://github.com/BoldingBruggeman/seamless-notebooks/)
   - setups: the setup files and the python scripts to launch models
   - parsac: contains scripts for sensitivity analysis
   - extern: contain a model to reproduce the results of Fussmann et al. (2002) and a modification to Parsac sensitivity analysis tool.
-- **ExternalForcings** Contains the script for a paper under revision 
+- **ExternalForcings** Contains the scripts for a paper under revision 
 
 
 
