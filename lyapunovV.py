@@ -1,8 +1,8 @@
 import numpy as np
+import time
 import sys
 import warnings
 
-# Make numpy warnings raise exceptions
 np.seterr(all="raise")
 
 
@@ -507,6 +507,7 @@ class LYAP(object):
 
     #new implementation of Palladin et al 1995 
     def search_delta(self, embedded, oldpnt, delta0, Delta):
+        start_time = time.time()
         x_old = embedded[oldpnt]
         diffs = embedded - x_old
         dists = np.linalg.norm(diffs, axis=1)
@@ -515,39 +516,54 @@ class LYAP(object):
         dists[oldpnt] = -np.inf
 
         # mask invalid neighbors
-        mask = (dists >= delta0) & (dists <= Delta)
-        dists[~mask] = -np.inf   
-        
+        mask = (np.arange(len(embedded)) > oldpnt) & (dists >= delta0) & (dists <= Delta)
+
+        dists[~mask] = -np.inf
+
         if np.all(~mask):
+#            print(f"[DEBUG] search_delta: no valid neighbor found for point {oldpnt}")
             return None, None, None
 
         best_pnt = np.argmax(dists)
+        end_time = time.time()
+#        print(f"[DEBUG] search_delta: point={oldpnt}, best={best_pnt}, "
+#              f"dist={dists[best_pnt]:.4e}, time={end_time-start_time:.4f}s")
+
         return best_pnt, dists[best_pnt], best_pnt
 
     def fet_temporal(self, db, dt, delta0=1e-5, Delta=0.3):
-        """
-        Implements Paladin et al., 1995 algorithm with vectorized neighbor search
-        """
-        out = []
+#        print("[DEBUG] Starting fet_temporal...")
+        t0 = time.time()
+
         tau = db['tau']
         ndim = db['ndim']
         datcnt = db['datcnt']
         datuse = datcnt - (ndim - 1) * tau
 
-        #Step 1: precompute embedded phase space
+#        print(f"[DEBUG] tau={tau}, ndim={ndim}, datcnt={datcnt}, datuse={datuse}")
+
+        # Step 1: precompute embedding
+        t1 = time.time()
         embedded = np.array([
             db['data'][i + np.arange(ndim) * tau]
             for i in range(datuse)
         ])
+        t2 = time.time()
+#        print(f"[DEBUG] Embedded space built in {t2 - t1:.4f}s, shape={embedded.shape}")
 
         evolve = 1
         oldpnt = 0
         SUM = 0
         count = 0
+        out = []
+
+        t_search_total = 0
+        loop_start = time.time()
 
         while oldpnt < datuse:
-            #Step 2: vectorized search
+            step_start = time.time()
             newpnt, dist, new_time = self.search_delta(embedded, oldpnt, delta0, Delta)
+            t_search_total += time.time() - step_start
 
             if newpnt is None:
                 oldpnt += evolve
@@ -557,8 +573,16 @@ class LYAP(object):
             SUM += delta_time
             count += 1
 
+ #           if count % 100 == 0:
+ #               print(f"[DEBUG] Iter={count}, oldpnt={oldpnt}, newpnt={newpnt}, "
+ #                     f"Δt={delta_time}, progress={oldpnt/datuse:.2%}")
+
             out.append([oldpnt, newpnt, count, delta_time])
             oldpnt = newpnt  # rescale trajectory
+
+        total_time = time.time() - t0
+#        print(f"[DEBUG] fet_temporal finished. Iterations={count}, "
+#              f"Total time={total_time:.2f}s, Search time={t_search_total:.2f}s")
 
         # compute mean Lyapunov exponent
         if count > 0:
@@ -567,13 +591,17 @@ class LYAP(object):
         else:
             lyap_exp = np.nan
 
+#        print(f"[DEBUG] Final Lyapunov exponent (Paladin): {lyap_exp:.6f}")
         return out, lyap_exp
 
     def lyap_e_paladin(self, tau=10, ndim=3, ires=10, maxbox=6000,
                        dt=0.01, delta0=1e-5, Delta=0.3):
-        """
-        Wrapper function to compute Lyapunov exponent using Paladin et al., 1995 method
-        """
+#        print(f"[DEBUG] Computing Lyapunov exponent (Paladin)...")
+        t0 = time.time()
         db = self.basgen(tau, ndim, ires, maxbox)
+        t1 = time.time()
+#        print(f"[DEBUG] basgen completed in {t1 - t0:.4f}s")
+
         out, lyap_exp = self.fet_temporal(db, dt, delta0, Delta)
+#        print(f"[DEBUG] Total runtime for lyap_e_paladin: {time.time() - t0:.4f}s")
         return out, lyap_exp
