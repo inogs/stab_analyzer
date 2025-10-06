@@ -505,5 +505,75 @@ class LYAP(object):
         return l[-1]  #returns the Lyapunov exponent in base 2
     
 
+    #new implementation of Palladin et al 1995 
+    def search_delta(self, embedded, oldpnt, delta0, Delta):
+        x_old = embedded[oldpnt]
+        diffs = embedded - x_old
+        dists = np.linalg.norm(diffs, axis=1)
 
+        # exclude self
+        dists[oldpnt] = -np.inf
 
+        # mask invalid neighbors
+        mask = (dists >= delta0) & (dists <= Delta)
+        dists[~mask] = -np.inf   
+        
+        if np.all(~mask):
+            return None, None, None
+
+        best_pnt = np.argmax(dists)
+        return best_pnt, dists[best_pnt], best_pnt
+
+    def fet_temporal(self, db, dt, delta0=1e-5, Delta=0.3):
+        """
+        Implements Paladin et al., 1995 algorithm with vectorized neighbor search
+        """
+        out = []
+        tau = db['tau']
+        ndim = db['ndim']
+        datcnt = db['datcnt']
+        datuse = datcnt - (ndim - 1) * tau
+
+        #Step 1: precompute embedded phase space
+        embedded = np.array([
+            db['data'][i + np.arange(ndim) * tau]
+            for i in range(datuse)
+        ])
+
+        evolve = 1
+        oldpnt = 0
+        SUM = 0
+        count = 0
+
+        while oldpnt < datuse:
+            #Step 2: vectorized search
+            newpnt, dist, new_time = self.search_delta(embedded, oldpnt, delta0, Delta)
+
+            if newpnt is None:
+                oldpnt += evolve
+                continue
+
+            delta_time = new_time - oldpnt
+            SUM += delta_time
+            count += 1
+
+            out.append([oldpnt, newpnt, count, delta_time])
+            oldpnt = newpnt  # rescale trajectory
+
+        # compute mean Lyapunov exponent
+        if count > 0:
+            delta_time_bar = SUM / count
+            lyap_exp = (1 / delta_time_bar) * np.log(Delta / delta0) / dt
+        else:
+            lyap_exp = np.nan
+
+        return out, lyap_exp
+
+    def lyap_e_paladin(self, tau=10, ndim=3, ires=10, maxbox=6000,
+                       dt=0.01, delta0=1e-5, Delta=0.3):
+        """
+        Wrapper function to compute Lyapunov exponent using Paladin et al., 1995 method
+        """
+        db = self.basgen(tau, ndim, ires, maxbox)
+        out, lyap_exp = self.fet_temporal(db, dt, delta0, Delta)
+        return out, lyap_exp
