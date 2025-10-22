@@ -16,3 +16,5 @@
 5. plot_global_lyap.py: plot the result of global computation
 
 ## Spatio-temporal analysis with random-walk 
+1. pyramid-rw.py : contains function to do random-walk analysis of spatio-temporal dataset, plus example of running over a regional subset for testing
+2. job_rw.slurm : job to launch pyramid-rw.py in parallel
