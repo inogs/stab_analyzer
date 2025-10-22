@@ -6,7 +6,7 @@ This repository contains the code which has been used to study the temporal stab
   - setups: the setup files and the python scripts to launch models
   - parsac: contains scripts for sensitivity analysis
   - extern: contain a model to reproduce the results of Fussmann et al. (2002) and a modification to Parsac sensitivity analysis tool.
-- **ExternalForcings** Contains the scripts for a paper under revision 
+- **ExternalForcings** The code used in the study (Occhipinti et al. 2025) 
 
 
 
@@ -16,5 +16,7 @@ Fussmann, G. F., & Heber, G. (2002). Food web complexity and chaotic population 
 Occhipinti, G., Solidoro, C., Grimaudo, R., Valenti, D., & Lazzari, P. (2023). Marine ecosystem models of realistic complexity rarely exhibits significant endogenous non-stationary dynamics. Chaos, Solitons & Fractals, 175, 113961.
 
 Occhipinti, G., Piani, S., & Lazzari, P. (2024). Stochastic effects on plankton dynamics: Insights from a realistic 0-dimensional marine biogeochemical model. Ecological Informatics, 83, 102778.
+
+Occhipinti, G., Solidoro, C., Grimaudo, R., Valenti, D., & Lazzari, P. (2025). Plankton Communities Behave Chaotically Under Seasonal or Stochastic Temperature Forcings. Ecology and Evolution, 15(8), e71930.
 
 Wolf, A., Swift, J. B., Swinney, H. L., & Vastano, J. A. (1985). Determining Lyapunov exponents from a time series. Physica D: nonlinear phenomena, 16(3), 285-317
