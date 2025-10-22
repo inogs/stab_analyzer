@@ -1,0 +1,10 @@
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=0-49%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=50-99%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=100-149%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=150-199%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=200-249%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=250-299%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=300-349%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=350-399%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=400-449%50 job_ensemble.slurm
+sbatch -o slurm-%A_%a.out -e slurm-%A_%a.err --array=450-499%50 job_ensemble.slurm
