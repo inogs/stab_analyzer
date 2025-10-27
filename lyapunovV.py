@@ -21,7 +21,7 @@ class LYAP(object):
         , where[:boxcnt,:ndim], nxtdat[:datcnt], data
         in a dictionary
         """
-        delay = np.array([0,tau,(ndim-1)*tau],dtype=int)
+        delay = np.arange(0, ndim * tau, tau, dtype=int)
 
         nxtbox = np.zeros((maxbox,ndim),dtype=int)
         where = np.zeros((maxbox,ndim),dtype=int)
