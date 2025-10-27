@@ -509,27 +509,40 @@ class LYAP(object):
     def search_delta(self, embedded, oldpnt, delta0, Delta):
         start_time = time.time()
         x_old = embedded[oldpnt]
-        diffs = embedded - x_old
-        dists = np.linalg.norm(diffs, axis=1)
-
-        # exclude self
-        dists[oldpnt] = -np.inf
-
-        # mask invalid neighbors
-        mask = (np.arange(len(embedded)) > oldpnt) & (dists >= delta0) & (dists <= Delta)
-
-        dists[~mask] = -np.inf
-
-        if np.all(~mask):
-#            print(f"[DEBUG] search_delta: no valid neighbor found for point {oldpnt}")
-            return None, None, None
-
-        best_pnt = np.argmax(dists)
-        end_time = time.time()
+        # search in ebedded for a point with values in between x_old - delta0 and x_old + delta0 and farer than ires from x_old
+        x_new = None
+        newpnt = None
+        for i,x in enumerate(embedded):
+            if i == oldpnt:
+                continue
+            if np.abs(i-oldpnt) < ires:
+                continue
+            dist = np.linalg.norm(x - x_old)
+            if dist <= delta0 :
+                x_new = x
+                newpnt = i
+                break
+        #reshape embedded to start from oldpnt and call it embedded_old, to the same for x_nex
+        if x_new is not None:
+            embedded_old = np.concatenate((embedded[oldpnt+1:], embedded[:oldpnt-1]), axis=0) #esclude the starting points
+            embedded_new = np.concatenate((embedded[newpnt+1:], embedded[:newpnt-1]), axis=0)
+        
+        #compute tau
+        tau = 0
+        # Se la distanza tra x[i] e y[i] è minore o uguale a delta0, continua
+        while ii < len(embedded_old) - 1 and np.abs(embedded_old[i] - embedded_new[i]) <= delta0:
+            tau += 1
+            i += 1
+        if tau == 0:
+            return np.nan, np.nan, np.nan
+        else:
+            return newpnt, tau
+        #best_pnt = np.argmax(dists)
+        #end_time = time.time()
 #        print(f"[DEBUG] search_delta: point={oldpnt}, best={best_pnt}, "
 #              f"dist={dists[best_pnt]:.4e}, time={end_time-start_time:.4f}s")
 
-        return best_pnt, dists[best_pnt], best_pnt
+        #return best_pnt, dists[best_pnt], best_pnt
 
     def fet_temporal(self, db, dt, delta0=1e-5, Delta=0.3):
 #        print("[DEBUG] Starting fet_temporal...")
@@ -562,23 +575,24 @@ class LYAP(object):
 
         while oldpnt < datuse:
             step_start = time.time()
-            newpnt, dist, new_time = self.search_delta(embedded, oldpnt, delta0, Delta)
+            #newpnt, dist, new_time = self.search_delta(embedded, oldpnt, delta0, Delta)
+            newpnt, tau = self.search_delta(embedded, oldpnt, delta0, Delta)
             t_search_total += time.time() - step_start
 
             if newpnt is None:
                 oldpnt += evolve
                 continue
 
-            delta_time = new_time - oldpnt
-            SUM += delta_time
+            
+            SUM += tau
             count += 1
 
  #           if count % 100 == 0:
  #               print(f"[DEBUG] Iter={count}, oldpnt={oldpnt}, newpnt={newpnt}, "
  #                     f"Δt={delta_time}, progress={oldpnt/datuse:.2%}")
 
-            out.append([oldpnt, newpnt, count, delta_time])
-            oldpnt = newpnt  # rescale trajectory
+            out.append([oldpnt, newpnt, count, tau])
+            oldpnt = newpnt + evolve # rescale trajectory
 
         total_time = time.time() - t0
 #        print(f"[DEBUG] fet_temporal finished. Iterations={count}, "
