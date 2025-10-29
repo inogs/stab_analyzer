@@ -507,7 +507,7 @@ class LYAP(object):
 
     #new implementation of Palladin et al 1995 
     def search_delta(self, embedded, oldpnt, delta0, Delta,ires):
-        forward = False
+        forward = True
         start_time = time.time()
         x_old = embedded[oldpnt]
         # search in embedded for a point with values in between x_old - delta0 and x_old + delta0 and farer than ires from x_old
@@ -537,7 +537,8 @@ class LYAP(object):
         #add noise to embedded new
         #add random noise uniformly distributed between -1/2 and 1/2 with intensity 10-7
         embedded_new += 1e-7 * np.random.uniform(-0.5, 0.5, embedded_new.shape)
-
+#        print(f"[DEBUG] search_delta: embedded: {embedded} embedding_old: {embedded_old}, embedding_new: {embedded_new}")
+              
         min_len = min(len(embedded_old), len(embedded_new))
         if min_len <= 0:
             return None, None
@@ -552,11 +553,16 @@ class LYAP(object):
                 break
             tau += 1
         end_time = time.time()
-        print(f"[DEBUG] search_delta: point={oldpnt}, best={newpnt}, "
+        if min_len == tau:
+            print(f"[DEBUG] search_delta: inipoint={embedded[oldpnt]}-{embedded[newpnt]}, endpoint={embedded_old[tau-1]}-{embedded_new[tau-1]}, "
+              f"tau={tau:.4e}, time={end_time-start_time:.4f}s")
+        else:
+            print(f"[DEBUG] search_delta: inipoint={embedded[oldpnt]}-{embedded[newpnt]}, endpoint={embedded_old[tau]}-{embedded_new[tau]}, "
               f"tau={tau:.4e}, time={end_time-start_time:.4f}s")
         if tau == 0:
             return None, None
         else:
+            tau +=1 # to account that the first point has been removed
             return int(newpnt), int(tau)
         
     def fet_temporal(self, db, dt, ires, delta0=1e-5, Delta=0.3):
