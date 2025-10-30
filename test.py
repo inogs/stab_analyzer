@@ -79,7 +79,7 @@ for T in T_values:
         x_vals.append(x_new)
     x_vals = np.array(x_vals)
     lyap = lv.LYAP(x_vals)
-    lyapunov_b1 = lyap.lyap_e_paladin(dt=1,delta0=delta0, Delta=DELTA, ndim=1, tau=1,ires=5)[-1]
+    lyapunov_b1 = lyap.lyap_e_paladin(dt=1,delta0=delta0, Delta=DELTA, ndim=1, tau=1,ires=5)
     lyapunov_values_b1.append(lyapunov_b1)
 
 # Calcolo di Lyapunov per b2 = 1/4
@@ -91,7 +91,7 @@ for T in T_values:
         x_new = f_map(x_vals[-1], t, a, b2, T)
         x_vals.append(x_new)
     x_vals = np.array(x_vals)
-    lyapunov_b2 = lyap.lyap_e_paladin(dt=1,delta0=delta0, Delta=DELTA, ndim=1, tau=1, ires=5)[-1]
+    lyapunov_b2 = lyap.lyap_e_paladin(dt=1,delta0=delta0, Delta=DELTA, ndim=1, tau=1, ires=5)
     lyapunov_values_b2.append(lyapunov_b2)
 
 # Plot con quadrati per b1 = 2/3
@@ -111,3 +111,14 @@ plt.ylabel('Lyapunov Exponent', fontsize=12)
 plt.title('Lyapunov Exponent vs T per due valori di b', fontsize=14)
 plt.grid(True)
 plt.savefig('prova.png')
+
+
+
+#simple test
+a =[ 1, 2, 3, 4, 5, 6, 7, 1, 2, 1, 1.5, 2.3, 3.5, 4.5, 6, 11, 1, 2, 1]
+a = np.array(a)
+delta0=1
+DELTA = 2
+lyap = lv.LYAP(a)
+print(f"testing array: {a}")
+lyapunov_b1 = lyap.lyap_e_paladin(dt=1,delta0=delta0, Delta=DELTA, ndim=1, tau=1,ires=1)

@@ -514,12 +514,12 @@ class LYAP(object):
         best_i = None
         best_dist = np.inf
         for i,x in enumerate(embedded):
-            if np.abs(i-oldpnt) < ires:
+            if np.abs(i-oldpnt) < 0.4*len(embedded):
                 continue # skip points too close in time
             if forward and i <= oldpnt:
                 continue
             d = np.linalg.norm(x - x_old)
-            if d <= delta0 and d < best_dist:
+            if d <= delta0 and d < best_dist and d > 0:
                 best_dist = d
                 best_i = i
         
@@ -528,43 +528,40 @@ class LYAP(object):
         newpnt = best_i
         #reshape embedded to start from oldpnt and call it embedded_old, to the same for x_nex
         if forward:
-            embedded_old = embedded[oldpnt+1:]
-            embedded_new = embedded[newpnt+1:]
+            embedded_old = embedded[oldpnt:newpnt]
+            embedded_new = embedded[newpnt:]
         else:
             embedded_old = np.concatenate((embedded[oldpnt+1:], embedded[:oldpnt]), axis=0) #esclude the starting points
             embedded_new = np.concatenate((embedded[newpnt+1:], embedded[:newpnt]), axis=0)
+        return embedded_old, embedded_new
         
-        #add noise to embedded new
-        #add random noise uniformly distributed between -1/2 and 1/2 with intensity 10-7
-        embedded_new += 1e-7 * np.random.uniform(-0.5, 0.5, embedded_new.shape)
-#        print(f"[DEBUG] search_delta: embedded: {embedded} embedding_old: {embedded_old}, embedding_new: {embedded_new}")
-              
-        min_len = min(len(embedded_old), len(embedded_new))
-        if min_len <= 0:
-            return None, None
-        
-        #compute tau
-        tau = 0
-        # Se la distanza tra x[i] e y[i] è minore o uguale a delta0, continua
-        for ii in range(min_len):
-        #while ii < len(embedded_old) - 1 and np.linalg.norm(embedded_old[ii] - embedded_new[ii]) <= Delta:
-            dist_forward = np.linalg.norm(embedded_old[ii] - embedded_new[ii])
-            if dist_forward > Delta:
-                break
-            tau += 1
-        end_time = time.time()
-        if min_len == tau:
-            print(f"[DEBUG] search_delta: inipoint={embedded[oldpnt]}-{embedded[newpnt]}, endpoint={embedded_old[tau-1]}-{embedded_new[tau-1]}, "
-              f"tau={tau:.4e}, time={end_time-start_time:.4f}s")
-        else:
-            print(f"[DEBUG] search_delta: inipoint={embedded[oldpnt]}-{embedded[newpnt]}, endpoint={embedded_old[tau]}-{embedded_new[tau]}, "
-              f"tau={tau:.4e}, time={end_time-start_time:.4f}s")
-        if tau == 0:
-            return None, None
-        else:
-            tau +=1 # to account that the first point has been removed
-            return int(newpnt), int(tau)
-        
+    def calculate_tau(self,x, y, delta0, DELTA):
+        tau_values = []
+        i = 0
+        min_len = min(len(x),len(y))
+        while i < min_len:
+            tau = 0
+
+            # Continua se la distanza è sotto delta0 o tra delta0 e DELTA
+            while i < min_len and (np.linalg.norm(x[i] - y[i]) < delta0 or delta0 <= np.linalg.norm(x[i] - y[i]) <= DELTA):
+                print(f'[DEBUG] continuing with ponts {x[i]} and {y[i]}')
+                tau += 1
+                i += 1
+                
+
+            # Esci quando la distanza supera DELTA
+            while i < min_len and np.linalg.norm(x[i] - y[i]) > DELTA:
+                print(f'[DEBUG] stopping with ponts {x[i]} and {y[i]} at tau {tau}')
+                i += 1
+
+            # Se tau > 0, salva il blocco
+            if tau > 0:
+                tau_values.append(tau)
+            
+            
+
+        return tau_values
+
     def fet_temporal(self, db, dt, ires, delta0=1e-5, Delta=0.3):
 #        print("[DEBUG] Starting fet_temporal...")
         t0 = time.time()
@@ -583,59 +580,41 @@ class LYAP(object):
         t2 = time.time()
         print(f"[DEBUG] Embedded space built in {t2 - t1:.4f}s, shape={embedded.shape}")
 
-        evolve = 1
+        #evolve = 1
         oldpnt = 0
-        SUM = 0
-        count = 0
-        out = []
+        #SUM = 0
+        #count = 0
+        #out = []
 
         t_search_total = 0
         loop_start = time.time()
 
-        visited = set()
+        #divide the timseries in two to confront
+        embedded_old, embedded_new = None, None
         while oldpnt < datuse:
-            #skip visited points
-            if oldpnt in visited:
-                oldpnt += evolve
-                continue
             step_start = time.time()
-            visited.add(oldpnt)
-            #newpnt, dist, new_time = self.search_delta(embedded, oldpnt, delta0, Delta)
-            newpnt, tau = self.search_delta(embedded, oldpnt, delta0, Delta,ires)
-            t_search_total += time.time() - step_start
+            #newpnt, tau = self.search_delta(embedded, oldpnt, delta0, Delta,ires)
+            embedded_old, embedded_new = self.search_delta(embedded, oldpnt, delta0, Delta,ires)
+            if embedded_old is not None and embedded_new is not None:
+                break
+            oldpnt +=1
+        t_search_total += time.time() - step_start
 
-            if newpnt is None:
-                oldpnt += evolve
-                continue
-            #if newpnt <= oldpnt:
-            #    oldpnt += evolve
-            #    continue
-
-            
-            SUM += tau
-            count += 1
-
-            if count % 100 == 0:
-                print(f"[DEBUG] Iter={count}, oldpnt={oldpnt}, newpnt={newpnt}, "
-                      f"Δt={tau}, progress={oldpnt/datuse:.2%}")
-
-            out.append([oldpnt, newpnt, count, tau])
-            #oldpnt = newpnt + evolve # rescale trajectory
-            oldpnt += tau
-
-        total_time = time.time() - t0
-        print(f"[DEBUG] fet_temporal finished. Iterations={count}, "
-              f"Total time={total_time:.2f}s, Search time={t_search_total:.2f}s")
-
-        # compute mean Lyapunov exponent
-        if count > 0:
-            delta_time_bar = SUM / count
-            lyap_exp = (1 / delta_time_bar) * np.log(Delta / delta0) / dt
+        if embedded_old is None and embedded_new is None:
+            return np.nan
+        embedded_old = np.array(embedded_old)
+        embedded_new = np.array(embedded_new)
+        print(f"[DEBUG] subdived timeseries in \n {embedded_old} \n and \n {embedded_new}")
+        #compute tau
+        tau_values = self.calculate_tau(x=embedded_old, y=embedded_new, delta0=delta0, DELTA=Delta)
+        if tau_values:
+            mean_tau = np.mean(tau_values)
+            print(f"[DEBUG] tau value {tau_values}  \n mean tau value {mean_tau}")
         else:
-            lyap_exp = np.nan
+            return np.nan
+        lyap_exp = (1 / mean_tau) * np.log(Delta / delta0) / dt
 
-        print(f"[DEBUG] Final Lyapunov exponent (Paladin): {lyap_exp:.6f}")
-        return out, lyap_exp
+        return lyap_exp
 
     def lyap_e_paladin(self, tau=10, ndim=3, ires=10, maxbox=6000,
                        dt=0.01, delta0=1e-5, Delta=0.3):
@@ -645,6 +624,6 @@ class LYAP(object):
         db = self.basgen(tau, ndim, ires, maxbox)
         t1 = time.time()
         print(f"[DEBUG] basgen completed in {t1 - t0:.4f}s")
-        out, lyap_exp = out, lyap_exp = self.fet_temporal(db=db, dt=dt, ires=ires, delta0=delta0, Delta=Delta)
+        lyap_exp = self.fet_temporal(db=db, dt=dt, ires=ires, delta0=delta0, Delta=Delta)
         print(f"[DEBUG] Total runtime for lyap_e_paladin: {time.time() - t0:.4f}s")
-        return out, lyap_exp
+        return lyap_exp
