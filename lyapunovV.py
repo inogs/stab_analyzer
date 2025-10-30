@@ -604,6 +604,10 @@ class LYAP(object):
             return np.nan
         embedded_old = np.array(embedded_old)
         embedded_new = np.array(embedded_new)
+        
+        #add noise to embedded_new to avoid having same points
+        embedded_new += 1.e-7 * np.random.normal(-1/2, 1/2, embedded_new.shape)
+
         print(f"[DEBUG] subdived timeseries in \n {embedded_old} \n and \n {embedded_new}")
         #compute tau
         tau_values = self.calculate_tau(x=embedded_old, y=embedded_new, delta0=delta0, DELTA=Delta)
