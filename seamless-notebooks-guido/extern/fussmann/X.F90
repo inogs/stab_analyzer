@@ -58,8 +58,8 @@ contains
 
       ! Register state variables
       call self%register_state_variable(self%id_X1, 'DWX1', 'd-1', 'dryweight', 0.0_rk, minimum=0.0_rk)
-      call self%register_state_variable(self%id_C1, 'DWC1', 'd-1', 'dryweight', 0.0_rk, minimum=0.0_rk)
-      call self%register_state_variable(self%id_C2, 'DWC2', 'd-1', 'dryweight', 0.0_rk, minimum=0.0_rk)
+      call self%register_state_dependency(self%id_C1, 'DWC1', 'd-1', 'dryweight')
+      call self%register_state_dependency(self%id_C2, 'DWC2', 'd-1', 'dryweight')
       call self%register_state_dependency(self%id_P1, 'DWP1', 'd-1', 'dryweight')
       call self%register_state_dependency(self%id_P2, 'DWP2', 'd-1', 'dryweight')
       call self%register_state_dependency(self%id_P3, 'DWP3', 'd-1', 'dryweight')
@@ -91,10 +91,10 @@ contains
          ! Retrieve current (local) state variable values.
          _GET_(self%id_X1,X1)           ! predatorX1
          _GET_(self%id_C1,C1)           ! predatoriC1
-         _GET_(self%id_C2,C1)           ! predatoriC2
+         _GET_(self%id_C2,C2)           ! predatoriC2
          _GET_(self%id_P1,P1)           ! prey1
-         _GET_(self%id_P2,P1)           ! prey2
-         _GET_(self%id_P3,P1)           ! prey3
+         _GET_(self%id_P2,P2)           ! prey2
+         _GET_(self%id_P3,P3)           ! prey3
 
          ! Retrieve current environmental conditions.
 
