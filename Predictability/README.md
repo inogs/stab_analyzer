@@ -7,6 +7,7 @@
 2. regional_study.py : compute the metrics in the regional subset for different parameters (tau) values, better to use a parallel job (e.g. 2 nodes), needs folder REGIONAL to save outputs
 3. cat REGIONAL/lyapunov_*.csv >> REGIONAL/merged.csv : merge multiple ranks outputs of previous step
 4. plot_lyapunov_test.py: plot of metrics in merged.csv
+5. job_regional.slurm : example of job to run create_regional_dataset.py and regional_study.py
 
 ### Global computation 
 1. global_lyap.py : parallel script to compute metrics lyap, PE, C over the globe, needs folder CSV to save outputs
