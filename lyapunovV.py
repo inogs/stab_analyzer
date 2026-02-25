@@ -506,63 +506,63 @@ class LYAP(object):
     
 
     #new implementation of Palladin et al 1995 
-    def search_delta(self, embedded, oldpnt, delta0, Delta,ires):
-        forward = True
-        start_time = time.time()
-        x_old = embedded[oldpnt]
-        # search in embedded for a point with values in between x_old - delta0 and x_old + delta0 and farer than ires from x_old
-        best_i = None
-        best_dist = np.inf
-        for i,x in enumerate(embedded):
-            if np.abs(i-oldpnt) < 0.4*len(embedded):
-                continue # skip points too close in time
-            if forward and i <= oldpnt:
-                continue
-            d = np.linalg.norm(x - x_old)
-            if d <= delta0 and d < best_dist and d > 0:
-                best_dist = d
-                best_i = i
-        
-        if best_i is None:
-            return None, None # no neighbor found
-        newpnt = best_i
-        #reshape embedded to start from oldpnt and call it embedded_old, to the same for x_nex
-        if forward:
-            embedded_old = embedded[oldpnt:newpnt]
-            embedded_new = embedded[newpnt:]
+
+    def select_y_by_recurrence(self, x_vals, epsilon, t_steps):
+        """
+        Subdived embededd timeseries in two using spatial recurrences
+        """
+        for t1 in range(len(x_vals)-t_steps):
+            for t2 in range(t1+t_steps, len(x_vals)):
+                if np.linalg.norm(x_vals[t2]-x_vals[t1]) < epsilon:
+                    max_len = len(x_vals)-max(t1,t2)
+                    return x_vals[t1:t1+max_len], x_vals[t2:t2+max_len]
+        return [], []
+
+    def lyap_tau_continuous(self, x_vals, y_vals, DELTA, delta0):
+        """
+        Compute tau and lyapunov
+        """
+        tau_list = []  # Lista dei tau misurati
+        d0_list = []   # Lista delle d0 (distanze iniziali)
+
+        counting = False
+        tau_current = 0
+        d0_current = 0
+
+        # Loop per calcolare i riavvicinamenti
+        for i in range(len(x_vals)):
+            dist = np.linalg.norm(x_vals[i] - y_vals[i])
+            if not counting:
+                if dist < delta0:  # Cerchiamo un riavvicinamento
+                    counting = True
+                    tau_current = 0
+                    d0_current = dist
+            else:
+                tau_current += 1
+
+                if dist >= DELTA:
+                    tau_list.append(tau_current)
+                    d0_list.append(d0_current)
+
+                    counting = False
+                    tau_current = 0
+
+        if tau_list:
+            mean_tau = np.mean(tau_list)
+            mean_d0 = np.mean(d0_list)
+
+            if mean_tau > 0 and mean_d0 > 0:
+                lyap_val = (1.0 / mean_tau) * np.log(DELTA / mean_d0)
+            else:
+                lyap_val = np.nan
         else:
-            embedded_old = np.concatenate((embedded[oldpnt+1:], embedded[:oldpnt]), axis=0) #esclude the starting points
-            embedded_new = np.concatenate((embedded[newpnt+1:], embedded[:newpnt]), axis=0)
-        return embedded_old, embedded_new
-        
-    def calculate_tau(self,x, y, delta0, DELTA):
-        tau_values = []
-        i = 0
-        min_len = min(len(x),len(y))
-        while i < min_len:
-            tau = 0
+            mean_tau = np.nan
+            lyap_val = np.nan
 
-            # Continua se la distanza è sotto delta0 o tra delta0 e DELTA
-            while i < min_len and (np.linalg.norm(x[i] - y[i]) < delta0 or delta0 <= np.linalg.norm(x[i] - y[i]) <= DELTA):
-                print(f'[DEBUG] continuing with ponts {x[i]} and {y[i]}')
-                tau += 1
-                i += 1
-                
+        return tau_list, mean_tau, lyap_val, d0_list  # Aggiungi d0_list qui
 
-            # Esci quando la distanza supera DELTA
-            while i < min_len and np.linalg.norm(x[i] - y[i]) > DELTA:
-                print(f'[DEBUG] stopping with ponts {x[i]} and {y[i]} at tau {tau}')
-                i += 1
 
-            # Se tau > 0, salva il blocco
-            if tau > 0:
-                tau_values.append(tau)
-            
-            
-
-        return tau_values
-
-    def fet_temporal(self, db, dt, ires, delta0=1e-5, Delta=0.3):
+    def fet_temporal(self, db, dt, ires, delta0=1e-4, Delta=1e-2,  epsilon = 1.e-4, t_steps=300):
 #        print("[DEBUG] Starting fet_temporal...")
         t0 = time.time()
 
@@ -580,54 +580,41 @@ class LYAP(object):
         t2 = time.time()
         print(f"[DEBUG] Embedded space built in {t2 - t1:.4f}s, shape={embedded.shape}")
 
-        #evolve = 1
-        oldpnt = 0
-        #SUM = 0
-        #count = 0
-        #out = []
-
-        t_search_total = 0
         loop_start = time.time()
-
         #divide the timseries in two to confront
-        embedded_old, embedded_new = None, None
-        while oldpnt < datuse:
-            step_start = time.time()
-            #newpnt, tau = self.search_delta(embedded, oldpnt, delta0, Delta,ires)
-            embedded_old, embedded_new = self.search_delta(embedded, oldpnt, delta0, Delta,ires)
-            if embedded_old is not None and embedded_new is not None:
-                break
-            oldpnt +=1
-        t_search_total += time.time() - step_start
+        print(embedded,flush=True)
+        print(epsilon)
+        print(t_steps)
+        x_aligned, y_current = self.select_y_by_recurrence(embedded, epsilon, t_steps)
 
-        if embedded_old is None and embedded_new is None:
-            return np.nan
-        embedded_old = np.array(embedded_old)
-        embedded_new = np.array(embedded_new)
-        
-        #add noise to embedded_new to avoid having same points
-        embedded_new += 1.e-7 * np.random.normal(-1/2, 1/2, embedded_new.shape)
-
-        print(f"[DEBUG] subdived timeseries in \n {embedded_old} \n and \n {embedded_new}")
-        #compute tau
-        tau_values = self.calculate_tau(x=embedded_old, y=embedded_new, delta0=delta0, DELTA=Delta)
-        if tau_values:
-            mean_tau = np.mean(tau_values)
-            print(f"[DEBUG] tau value {tau_values}  \n mean tau value {mean_tau}")
+        if not len(x_aligned)>0:
+            print("cannot find any reccurrence to subdivide embededd space", flush=True)
+            return np.nan, np.nan, np.nan
         else:
-            return np.nan
-        lyap_exp = (1 / mean_tau) * np.log(Delta / delta0) / dt
+            # Print chosen couple
+            print(f"Chose couple: x = {x_aligned[0]}, y = {y_current[0]}")
 
-        return lyap_exp
+            # Compute Lyap tau
+            tau_values, mean_tau, lyap_tau_val, d0_list = self.lyap_tau_continuous(x_aligned, y_current, Delta, delta0)
+
+            # Compute mean distance
+            mean_d0 = np.nanmean(d0_list)
+            print(f"Mean distance between recurrences = {mean_d0:.6f}")
+            # Print mean tau and Lyap
+            print(f"mean tau={mean_tau:.3f} | Lyap tau={lyap_tau_val:.3f} | Mean distance={mean_d0:.6f}", flush=True)
+
+            return mean_tau,lyap_tau_val,mean_d0
+
+        
 
     def lyap_e_paladin(self, tau=10, ndim=3, ires=10, maxbox=6000,
-                       dt=0.01, delta0=1e-5, Delta=0.3):
+                       dt=0.01, delta0=1e-5, Delta=0.3, epsilon=1e-4, t_steps=300):
         print(f"[DEBUG] Computing Lyapunov exponent (Paladin)...")
         print(f"[DEBUG] Parameters: tau={tau}, ndim={ndim}, ires={ires}, maxbox={maxbox}, dt={dt}, delta0={delta0}, Delta={Delta}")
         t0 = time.time()
         db = self.basgen(tau, ndim, ires, maxbox)
         t1 = time.time()
         print(f"[DEBUG] basgen completed in {t1 - t0:.4f}s")
-        lyap_exp = self.fet_temporal(db=db, dt=dt, ires=ires, delta0=delta0, Delta=Delta)
+        mean_tau,lyap_tau_val,mean_d0 = self.fet_temporal(db=db, dt=dt, ires=ires, delta0=delta0, Delta=Delta, epsilon=epsilon, t_steps=t_steps)
         print(f"[DEBUG] Total runtime for lyap_e_paladin: {time.time() - t0:.4f}s")
-        return lyap_exp
+        return mean_tau,lyap_tau_val,mean_d0
