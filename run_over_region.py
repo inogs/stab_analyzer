@@ -10,130 +10,6 @@ from matplotlib import pyplot as plt
 import ordpy as od
 import os
 
-# Description of functions:
-# SAMPLED_LAT_LON: extract timeseries from a spatio-temporal random walk starting from given lat, lon, time
-# SAMPLED_HC_LAT_LON: calculate permutation entropy, complexity and lyapunov exponent for a given lat, lon, starting time using random-walk sampling
-# mpi_pyramidal_complexity_entropy_map: run in parrallel (mpi4py) over the whole dataset SAMPLED_HC_LAT_LON to produce maps of permutation entropy and complexity
-
-def SAMPLED_LAT_LON(data, lat_center, lon_center, initial_time_layer, steps=10, ensemble=10, p_back=0.2, connectivity=10, 
-                       avoid_nan=True, d=3, tau=10):
-    """
-    Extract a timeseries from a spatio-temporal random walk starting from lat_center, lon_center
-
-    Parameters
-    ----------
-    data : xarray.DataArray
-        The xarray containing the data.
-    lat_center : int
-        Center latitude index.
-    lon_center : int
-        Center longitude index.
-    initial_time_layer : int
-        Initial time layer index.
-    steps : int
-        Number of steps in a self-avoiding random walk used to sample 
-        the neighborhood in space and time of a given observation.
-    p_back: float
-        Probability of stepping back in time during the random walk 
-        (default is 0.2).
-    connectivity : int
-        Number of  max spatial neighbors to consider (default is 10).
-    avoid_nan: bool
-        Wheter to avoid nans while sampling the neighborhood or not.
-        (Default is True.)
-    d : int, optional
-        Embedding dimension used in the sampled series to estimate the
-        permutation patterns (default is 3).
-    tau : int, optional
-        Time delay used in the sampled series to estimate the
-        permutation patterns (default is 10).
-
-    Returns
-    -------
-    tuple
-        array containing timeseries sampled with a spatio-temporal random walk.
-    """
-    da                          = data
-    time_dim, lat_dim, lon_dim  = "time", "latitude", "longitude"
-    T, H, W                     = da.sizes[time_dim], da.sizes[lat_dim], da.sizes[lon_dim]
-    rng                         = np.random.default_rng()
-
-
-    # Track visited spacetime cells
-    def in_bounds(i, j): return 0 <= i < H and 0 <= j < W
-
-    # Helper to fetch a single value (small .isel keeps compute granular on Dask)
-    def get_val(tt, ii, jj):
-        #return da.isel({time_dim: tt, lat_dim: ii, lon_dim: jj}).values()
-        val = da.isel({time_dim: tt, lat_dim: ii, lon_dim: jj}).to_array()
-        # Convert 0-d numpy array → scalar
-        return float(val) if np.ndim(val) == 0 else val.item()
-    
-    values = []
-    for _ in range(ensemble):
-        visited = set()
-        visited.add((initial_time_layer, lat_center, lon_center))
-        tempvalues = [get_val(initial_time_layer, lat_center, lon_center)]
-        t, i, j = initial_time_layer, lat_center, lon_center 
-        for step_idx in range(steps-1):
-            if step_idx == 0:
-                tt = t+1
-            else:
-                tt += 1
-            #if at this time all the dataset in nan insert a nan value and continue
-            if  bool(da.CHL.isel({time_dim: tt}).isnull().all()):
-            #if  bool(da.RRS412.isel({time_dim: tt}).isnull().all()):
-                tempvalues.append(np.nan)
-                visited.add((tt, i, j))
-#               print(f"all nan at time {tt}, inserting nan value")
-                continue
-            # Reset rule: if step is multiple of tau*d go back to the initial coordinates
-            reset=True
-            if reset:
-                if step_idx > 0 and step_idx % (tau*d) == 0:
-                    i, j = lat_center, lon_center
-                    v = get_val(tt, i, j)
-                    if (not avoid_nan) or np.isfinite(v):
-                        tempvalues.append(v)
-                        visited.add((tt, i, j))
-                        continue  # skip normal random choice this step
-                    else:
-                        pass # continue with normal random choice if the center is nan
-            space_cand = []
-            radius = 1
-            max_radius = min(connectivity,max(H, W)) # max search radius to avoid infinite loops
-            while not space_cand and radius <= max_radius:  # expand until we find something or exhaust grid
-            # Build all offsets at this radius
-                offsets = [(di, dj) for di in range(-radius, radius+1) 
-                        for dj in range(-radius, radius+1)
-                           ]
-                for di, dj in rng.permutation(offsets):
-                    ii, jj = i + di, j + dj
-                    if in_bounds(ii, jj):  # and (t, ii, jj) not in visited:
-                        v = get_val(tt, ii, jj)
-                        if (not avoid_nan) or np.isfinite(v):
-                            space_cand.append((tt, ii, jj, v))
-
-                radius += 1
-
-
-            #if cannot find valid space_cand add nan: # may be change to return nan?
-            if not space_cand:
-                print(f"cannot find valid candidates, adding a nan at step {step_idx}")
-                space_cand = [(tt, i, j, np.nan)]
-                #break  # stuck
-            k = rng.integers(len(space_cand))
-            t, i, j, v = space_cand[k]
-
-            # add visited point
-            visited.add((t, i, j))
-            tempvalues.append(v)
-        
-        values.append(tempvalues)
-    
-    return values
-
-
     
 
 #used to run over coordinates
@@ -156,7 +32,7 @@ def mpi_pyramidal_complexity_entropy_map(
 
     # Preallocate local results (columns: idx, lyap_palladin, etc)
     n_local = len(my_indices)
-    local_arr = np.empty((n_local, 3), dtype=float) #size of indicators 
+    local_arr = np.empty((n_local, 3), dtype=float) #size of indicators + 1, now 2 indicators 
 
     for i, idx in enumerate(my_indices):
         lat = idx // n_lon
