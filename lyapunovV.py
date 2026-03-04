@@ -104,10 +104,14 @@ class LYAP(object):
                     select = False
 
                 if iflag != 0:
-                    ctheta = min(np.abs(dot/(tdist*oldist)),1)
-                    theta = 57.3*np.arccos(ctheta)
-                    if theta >= thbest:
+                    #print(dot,tdist,oldist)
+                    if tdist*oldist == 0:
                         select = False
+                    else:
+                        ctheta = min(np.abs(dot/(tdist*oldist)),1)
+                        theta = 57.3*np.arccos(ctheta)
+                        if theta >= thbest:
+                            select = False
                     if select:
                         thbest = theta
                 if select:
@@ -266,6 +270,7 @@ class LYAP(object):
         oldcrd = data[int(oldpnt)+delay]
         zewcrd = data[int(newpnt)+delay]
         igcrds = np.floor((oldcrd - datmin) / boxlen).astype(int) -1 #added -1
+        igcrds = igcrds.values()
         oldist = np.sqrt(np.sum(np.power(oldcrd - zewcrd,2)))
         irange = int(np.round(dismin/boxlen))
         if irange == 0 :
